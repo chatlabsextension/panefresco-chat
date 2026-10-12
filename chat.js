@@ -1,5 +1,5 @@
 /* Panefresco – inställningar för Smartsvar-chatten (kräver widget.js v4.1 eller senare).
-   Looken kommer från Panefrescos meny: koboltblå majolikaram, krämvitt menypapper, citronglöd,
+   Looken kommer från Panefrescos meny: koboltblått, krämvitt menypapper, citronglöd,
    Cinzel i rubrikerna och citat i kursiv Cormorant Garamond i orange.
    Medan chatten tänker gräddas en napolitansk pizza i ugnen (thinking: 'oven'). */
 (function () {
@@ -41,20 +41,25 @@ window.SMARTSVAR = {
 
   thinking: 'oven',
 
-  // Detaljerna från menyn: krämvitt papper, citronglöd, blå dubbelram och citat i kursiv orange.
+  // Detaljerna från menyn: krämvitt papper, citronglöd och citat i kursiv orange.
   css: [
-    '.w{--base:#FBF6EA!important;--glow1:#FBEBB0!important;--glow1-0:rgba(251,235,176,0)!important;--glow2:#E6EDFA!important;--glow2-0:rgba(230,237,250,0)!important;',
+    '.w{--base:#FBF6EA!important;--glow1:#F9DF8C!important;--glow1-0:rgba(249,223,140,0)!important;--glow2:#D9E4F9!important;--glow2-0:rgba(217,228,249,0)!important;',
     '--paper2:#F1E9D8!important;--line:#E5DAC4!important;--muted:#6E6A62!important}',
-    '.panel{box-shadow:0 0 0 2px #2747A0,0 2px 4px rgba(0,0,0,.05),0 32px 72px -26px rgba(20,35,90,.38)!important}',
-    '.panel::after{content:"";position:absolute;z-index:6;inset:5px;border:1px solid rgba(39,71,160,.42);border-radius:calc(var(--r1) - 4px);pointer-events:none}',
-    '.w[data-m=mobile] .panel::after{bottom:-2px;border-radius:calc(var(--r1) - 4px) calc(var(--r1) - 4px) 0 0}',
+    // Lite bredare panel på datorn och en större, mjukare toning överst
+    '.w[data-m=desktop] .panel{width:min(440px,calc(var(--vw) - 32px))}',
+    '.panel::before{height:560px;opacity:max(var(--glow,1),.6)}',
+    // Lite större text
+    '.tx,.op{font-size:16px}',
+    '.me{font-size:16px}',
+    'textarea{font-size:16px}',
+    '.chips button{font-size:14.5px}',
     '.name{letter-spacing:.07em;color:#2747A0}',
     '.hl{color:#2747A0;letter-spacing:.03em}',
     '.tg{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:20px;line-height:1.25;color:#E0782F;max-width:290px}',
     '.chips button{background:#fff;color:#2747A0;box-shadow:inset 0 0 0 1px rgba(39,71,160,.3)}',
     '.chips button:hover{background:#EEF2FB}',
     '.card .cbtn{background:#fff;box-shadow:inset 0 0 0 1px rgba(39,71,160,.3)}',
-    '.teaser{background:#FBF6EA;box-shadow:0 0 0 1.5px #2747A0,0 28px 60px -22px rgba(20,35,90,.38)}',
+    '.teaser{background:#FBF6EA}',
     '.teaser .chips button{background:#fff}',
     '.shim{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;font-weight:600}'
   ].join('')
