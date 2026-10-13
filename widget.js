@@ -18,7 +18,8 @@
     v4.3: chatten svarar med röst. Frågar besökaren med rösten läses svaret upp och chatten lyssnar sedan igen (ett röstsamtal).
     En högtalarknapp i headern läser upp alla svar. voiceReply: false stänger av uppläsningen, voiceLoop: false lyssnar inte igen.
     v4.4: rösten kommer från Voiceflow (agentens röst i projektet) via audio_events i strömmen. voiceEngine: 'browser'
-    använder webbläsarens röst i stället, och voiceFallback: 'browser' läser upp med den om Voiceflow inte skickar något ljud. */
+    använder webbläsarens röst i stället, och voiceFallback: 'browser' läser upp med den om Voiceflow inte skickar något ljud.
+    v4.5: rösten spelas medan den strömmar in (MediaSource), och i ett röstsamtal väntar den inte på pizzaugnen. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -1416,7 +1417,7 @@
       var byVoice = turnVoice, ep0 = epoch; turnVoice = false;
       var wantVoice = canSpeak() && (byVoice || speakOn);
       var again = byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch && !busy) listen(); } : null;
-      var tA = wantVoice && audioOK() && !C.demo ? (turnAudio = newTurn(again, rp.ready)) : null;
+      var tA = wantVoice && audioOK() && !C.demo ? (turnAudio = newTurn(again, byVoice ? null : rp.ready)) : null;
       answer(action, rp).then(function () {
         if (!alive) return;
         var done = rp.finish(), vis = visible(rp.blocks);
@@ -1551,7 +1552,7 @@
     /* ---------- Voiceflows röst ----------
        Med audio_events=true skickar Voiceflow agentens röst som ljudspår i samma ström som texten: start, content (mp3-bitar) och end per meddelande.
        Varje meddelande sätts ihop, avkodas och spelas i tur och ordning utan glapp, med start först när svaret syns i chatten. */
-    function newTurn(then, gate) { return { tok: ++sayTok, parts: {}, cur: null, ended: false, decoding: 0, queued: 0, played: false, done: false, then: then, gate: gate || Promise.resolve(), chain: Promise.resolve(), text: '' }; }
+    function newTurn(then, gate) { return { tok: ++sayTok, useMse: mseOK(), all: [], m: null, parts: {}, cur: null, ended: false, decoding: 0, queued: 0, played: false, done: false, then: then, gate: gate || Promise.resolve(), chain: Promise.resolve(), text: '' }; }
     function bytesOf(c) {
       if (typeof c === 'string') {
         var m = /^data:[^,]*;base64,(.*)$/.exec(c), raw = atob((m ? m[1] : c).replace(/\s+/g, '')), u = new Uint8Array(raw.length);
@@ -1562,20 +1563,68 @@
       if (c && Array.isArray(c.data)) return new Uint8Array(c.data);
       return null;
     }
-    function audioTrace(p) {
-      var t = turnAudio; if (!t || t.tok !== sayTok || t.done) return;
-      if (p.state === 'start') { t.cur = String(p.messageID || Math.random()); t.parts[t.cur] = []; return; }
-      if (p.state === 'content') { try { var b = bytesOf(p.content); if (b && b.length) (t.parts[String(t.cur)] = t.parts[String(t.cur)] || []).push(b); } catch (e) {} return; }
-      if (p.state !== 'end') return;
-      var key = String(t.cur), arr = t.parts[key] || []; delete t.parts[key]; t.cur = null;
-      if (!arr.length) return;
+    /* Strömmad uppspelning: varje ljudbit läggs i en MediaSource direkt när den kommer, så rösten börjar inom en bråkdel av en sekund.
+       iPhone och webbläsare utan MediaSource för mp3 spelar i stället varje meddelande när det är helt (avkodat i ljudmotorn). */
+    function mseOK() {
+      if (C.voiceStream === false || /iP(hone|ad|od)/.test(navigator.userAgent)) return false;
+      var MS = window.MediaSource; return !!(MS && MS.isTypeSupported && MS.isTypeSupported('audio/mpeg'));
+    }
+    function mseStart(t) {
+      var m = t.m = { q: [], open: false, sb: null, au: new Audio(), ms: new MediaSource(), started: false, closed: false };
+      m.url = URL.createObjectURL(m.ms); m.au.src = m.url; m.au.preload = 'auto';
+      t.decoding++; // väntar på att ljudet ska spelas klart
+      m.ms.addEventListener('sourceopen', function () {
+        try { m.sb = m.ms.addSourceBuffer('audio/mpeg'); m.sb.mode = 'sequence'; } catch (e) { return mseFail(t); }
+        m.open = true; m.sb.addEventListener('updateend', function () { msePump(t); }); msePump(t);
+      });
+      m.au.addEventListener('playing', function () { if (t.tok === sayTok && !t.done) { t.played = true; if (!speaking) setSpeaking(true); } });
+      m.au.addEventListener('ended', function () { mseEnd(t); });
+      m.au.addEventListener('error', function () { if (!t.played) mseFail(t); else mseEnd(t); });
+    }
+    function msePump(t) {
+      var m = t.m; if (!m || !m.open || m.sb.updating) return;
+      if (m.q.length) { try { m.sb.appendBuffer(m.q.shift()); } catch (e) { return mseFail(t); } msePlay(t); return; }
+      if (t.ended && !m.closed && m.ms.readyState === 'open') { m.closed = true; try { m.ms.endOfStream(); } catch (e) {} if (!m.started) mseEnd(t); }
+    }
+    function msePlay(t) {
+      var m = t.m; if (!m || m.started) return; m.started = true;
+      t.gate.then(function () {
+        if (t.tok !== sayTok || t.done || !t.m) return;
+        var pr = m.au.play(); if (pr && pr.catch) pr.catch(function () { mseFail(t); });
+      });
+    }
+    function mseEnd(t) { var m = t.m; if (!m) return; t.m = null; try { URL.revokeObjectURL(m.url); } catch (e) {} t.decoding--; checkTurn(t); }
+    function mseFail(t) { // går inte att strömma: spela allt som kommit hittills på det vanliga sättet
+      var m = t.m; if (!m) return; t.m = null; t.useMse = false;
+      try { m.au.pause(); URL.revokeObjectURL(m.url); } catch (e) {}
+      if (t.all.length) queueBytes(t, t.all.slice());
+      t.decoding--; checkTurn(t);
+    }
+    function mseStop(t) { var m = t && t.m; if (!m) return; t.m = null; try { m.au.pause(); m.au.removeAttribute('src'); URL.revokeObjectURL(m.url); } catch (e) {} }
+    function queueBytes(t, arr) {
       var len = 0, off = 0; arr.forEach(function (a) { len += a.length; });
+      if (!len) return;
       var all = new Uint8Array(len); arr.forEach(function (a) { all.set(a, off); off += a.length; });
       t.decoding++;
       t.chain = t.chain.then(function () { return t.gate; }).then(function () { return decode(all.buffer); })
         .then(function (buf) { if (t.tok === sayTok && !t.done) play(buf, t); })
         .catch(function (e) { console.warn('[Smartsvar] Rösten gick inte att spela', e); })
         .then(function () { t.decoding--; checkTurn(t); });
+    }
+    function audioTrace(p) {
+      var t = turnAudio; if (!t || t.tok !== sayTok || t.done) return;
+      if (p.state === 'start') { t.cur = String(p.messageID || Math.random()); t.parts[t.cur] = []; return; }
+      if (p.state === 'content') {
+        try {
+          var b = bytesOf(p.content); if (!b || !b.length) return;
+          if (t.useMse) { t.all.push(b); if (!t.m) mseStart(t); if (t.m) { t.m.q.push(b); msePump(t); } return; }
+          (t.parts[String(t.cur)] = t.parts[String(t.cur)] || []).push(b);
+        } catch (e) {}
+        return;
+      }
+      if (p.state !== 'end' || t.useMse) return;
+      var key = String(t.cur), arr = t.parts[key] || []; delete t.parts[key]; t.cur = null;
+      queueBytes(t, arr);
     }
     function decode(ab) {
       actx = actx || new AC();
@@ -1589,6 +1638,7 @@
       src.onended = function () { sources = sources.filter(function (x) { return x !== src; }); t.queued--; checkTurn(t); };
     }
     function checkTurn(t) {
+      if (t && t.m && t.ended) msePump(t);
       if (!t || t.done || t.tok !== sayTok || !t.ended || t.decoding || t.queued || busy) return;
       t.done = true; if (turnAudio === t) turnAudio = null;
       if (speaking) setSpeaking(false);
@@ -1611,7 +1661,7 @@
     }
     function setSpeaking(on) { speaking = on; field.classList.toggle('spk', on); paintMic(); sync(); }
     function stopSpeak() {
-      sayTok++; turnAudio = null; playAt = 0;
+      mseStop(turnAudio); sayTok++; turnAudio = null; playAt = 0;
       sources.forEach(function (x) { try { x.onended = null; x.stop(); } catch (e) {} }); sources = [];
       if (speaking) setSpeaking(false);
       try { if (TTS && (TTS.speaking || TTS.pending)) TTS.cancel(); } catch (e) {}
@@ -1733,7 +1783,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.4.0', base: BASE, mount: mount,
+    __v: '4.5.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
