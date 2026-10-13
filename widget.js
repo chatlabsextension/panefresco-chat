@@ -16,7 +16,9 @@
     v4.2: voice: true ger en stor Prata-knapp (röstinmatning i webbläsaren). status visar en rad under namnet (till exempel AI-assistent),
     aiNotice en AI-upplysning i foten, launcherSub en andra rad i chattknappen och launcherMark: true kundens symbol i knappen.
     v4.3: chatten svarar med röst. Frågar besökaren med rösten läses svaret upp och chatten lyssnar sedan igen (ett röstsamtal).
-    En högtalarknapp i headern läser upp alla svar. voiceReply: false stänger av uppläsningen, voiceLoop: false lyssnar inte igen. */
+    En högtalarknapp i headern läser upp alla svar. voiceReply: false stänger av uppläsningen, voiceLoop: false lyssnar inte igen.
+    v4.4: rösten kommer från Voiceflow (agentens röst i projektet) via audio_events i strömmen. voiceEngine: 'browser'
+    använder webbläsarens röst i stället, och voiceFallback: 'browser' läser upp med den om Voiceflow inte skickar något ljud. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -723,6 +725,7 @@
     var w = q('.w'), panel = q('.panel'), scroll = q('.scroll'), msgs = q('.msgs'),
         ta = q('textarea'), sendB = q('.send'), launch = q('.launch'), teaser = q('.teaser'), field = q('.field'), micB = q('.mic');
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition, voiceOK = false, rec = null, listening = false, phDefault = '';
+    var AC = window.AudioContext || window.webkitAudioContext, actx = null, sources = [], playAt = 0, turnAudio = null;
     var TTS = window.speechSynthesis, speaking = false, sayTok = 0, unlocked = false, viaVoice = false, turnVoice = false, speakOn = false;
     var busy = false, inputLocked = false, log = [], isOpen = inline, squareLogo = false, logoWide = false, lastUser = '', waitText = '';
     if (inline) w.classList.add('open');
@@ -1133,9 +1136,9 @@
         .then(function (res) { tracesOf(res).forEach(onTrace); });
     }
     // Streaming: samma publika väg som Voiceflows egen chatt använder. Svaret kommer i bitar (Server-Sent Events) medan det skrivs.
-    function vfStream(action, env, onTrace) {
+    function vfStream(action, env, onTrace, audio) {
       var got = false;
-      return fetch(RUNTIME + '/v2/public/project/' + enc(V.projectID) + '/user/' + enc(vfUser()) + '/interact/stream?audio_events=false&completion_events=true&environment=' + env, {
+      return fetch(RUNTIME + '/v2/public/project/' + enc(V.projectID) + '/user/' + enc(vfUser()) + '/interact/stream?audio_events=' + (audio ? 'true&audio_encoding=audio%2Fmp3' : 'false') + '&completion_events=true&environment=' + env, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify({ action: action })
       }).then(function (r) {
         if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
@@ -1159,10 +1162,10 @@
       }).catch(function (e) { e.got = got; throw e; });
     }
     // Strömmar om det går (bara "production" och "development" har en stream-väg), annars den vanliga vägen.
-    function vfCall(action, onTrace) {
+    function vfCall(action, onTrace, audio) {
       var env = V.versionID === 'development' ? 'development' : (!V.versionID || V.versionID === 'production') ? 'production' : '';
       if (C.stream === false || streamOK === false || !env || !window.fetch) return vfPlain(action, onTrace);
-      return vfStream(action, env, onTrace).then(function () { streamOK = true; }, function (e) {
+      return vfStream(action, env, onTrace, audio).then(function () { streamOK = true; }, function (e) {
         // Det första anropet (öppningen) är ofarligt att göra om. Går det inte att strömma används den vanliga vägen resten av besöket.
         if (streamOK !== null || e.got) throw e;
         streamOK = false; return vfPlain(action, onTrace);
@@ -1304,6 +1307,7 @@
       if (type === 'cardV2') { rp.block({ t: 'card', card: cardOf(p) }); return none; }
       if (type === 'carousel' && Array.isArray(p.cards)) { rp.block({ t: 'car', cards: p.cards.map(cardOf) }); return none; }
       // Tilläggen från den klassiska widgeten. Flödet väntar på svar från chatten, annars händer ingenting.
+      if (type === 'audio') { if (st.audio) audioTrace(p); return none; }
       if (type === 'ext_placeholder') { if (!C.placeholder && p.placeholder) ta.placeholder = String(p.placeholder); return none; }
       if (type === 'ext_browserData') return browserData(p.apiKey).then(function (data) { return { type: 'complete', payload: data }; });
       if (type === 'ext_waitingAnimation') {
@@ -1315,15 +1319,15 @@
       if (type === 'ext_disableInput') { inputLocked = !!p.isDisabled; ta.disabled = inputLocked; sync(); return none; }
       return none; // block, flow, end och annat som bara är felsökning
     }
-    function exchange(action, rp) {
-      var hops = 0, st = { said: [], cur: null };
+    function exchange(action, rp, audio) {
+      var hops = 0, st = { said: [], cur: null, audio: !!audio };
       function step(req) {
         if (!req || hops++ > 8) { rp.close(); return Promise.resolve(); }
         var next = null, chain = Promise.resolve();
         return vfCall(req, function (tr) {
           chain = chain.then(function () { return handleTrace(tr, rp, st); }).then(function (n) { if (n) next = n; });
           chain.catch(function () {});
-        }).then(function () { return chain; }).then(function () { aiEnd(st, rp); rp.close(); return step(next); });
+        }, st.audio).then(function () { return chain; }).then(function () { aiEnd(st, rp); rp.close(); return step(next); });
       }
       return step(action);
     }
@@ -1360,7 +1364,7 @@
         }, 900 + Math.random() * 700);
       });
       if (!V.projectID) return Promise.reject(new Error('projectID saknas i konfigurationen'));
-      return launched().then(function () { return exchange(action, rp); });
+      return launched().then(function () { return exchange(action, rp, !!(turnAudio && turnAudio.tok === sayTok)); });
     }
 
     /* ---------- Öppning, skicka, börja om ---------- */
@@ -1394,7 +1398,7 @@
       text = String(text || '').trim();
       if (!text || busy || inputLocked) return;
       if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); }
-      turnVoice = viaVoice; viaVoice = false; stopSpeak();
+      turnVoice = viaVoice; viaVoice = false; stopSpeak(); unlock();
       open(); hideTeaser(); flushTypers();
       [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk'), function (n) { n.remove(); });
       if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
@@ -1409,25 +1413,25 @@
       var think = addBot(thinkHtml()), rp = makeReply(think);
       stick = true;
       setTimeout(function () { follow(me); }, 30);
+      var byVoice = turnVoice, ep0 = epoch; turnVoice = false;
+      var wantVoice = canSpeak() && (byVoice || speakOn);
+      var again = byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch && !busy) listen(); } : null;
+      var tA = wantVoice && audioOK() && !C.demo ? (turnAudio = newTurn(again, rp.ready)) : null;
       answer(action, rp).then(function () {
         if (!alive) return;
         var done = rp.finish(), vis = visible(rp.blocks);
         if (!vis.length) throw new Error('Tomt svar från Voiceflow');
         log.push({ r: 'bot', blocks: vis }); save();
-        var byVoice = turnVoice; turnVoice = false;
-        if (canSpeak() && (byVoice || speakOn)) {
-          var words = textOfBlocks(vis), ep0 = epoch;
-          rp.ready.then(function () {
-            if (!alive || ep0 !== epoch || !isOpen) return;
-            say(words, byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch) listen(); } : null);
-          });
-        }
+        var words = textOfBlocks(vis);
+        if (tA) { tA.text = words; tA.ended = true; checkTurn(tA); }
+        else if (wantVoice && browserOK()) rp.ready.then(function () { if (alive && ep0 === epoch && isOpen) say(words, again); });
         done.catch(function (e) { console.warn('[Smartsvar]', e); });
       }).catch(function (err) {
         if (!alive) return;
         console.warn('[Smartsvar]', err);
+        if (tA) { tA.then = null; tA.ended = true; checkTurn(tA); }
         rp.fail(function () { ask(action, me); });
-      }).then(function () { waitText = ''; busy = false; sync(); });
+      }).then(function () { waitText = ''; busy = false; sync(); if (tA) checkTurn(tA); });
     }
     function reset() {
       if (busy) return;
@@ -1534,10 +1538,63 @@
        Rösten väljs efter svarets språk. De naturligaste rösterna väljs först (till exempel Microsofts Natural-röster i Edge och Alva på Apple).
        voiceName väljer en bestämd röst, voiceRate talhastigheten. */
     var LANGTAG = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT' };
-    function canSpeak() { return !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance); }
-    function unlock() { // iPhone släpper bara fram ljud som startas av ett tryck. Ett tyst ord vid första trycket låser upp rösten.
-      if (unlocked || !canSpeak()) return; unlocked = true;
-      try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; TTS.speak(u); } catch (e) {}
+    function engine() { return C.voiceEngine === 'browser' ? 'browser' : 'voiceflow'; }
+    function audioOK() { return !!(C.voice && C.voiceReply !== false && AC && engine() === 'voiceflow'); }
+    function browserOK() { return !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance && (engine() === 'browser' || C.voiceFallback === 'browser')); }
+    function canSpeak() { return audioOK() || browserOK(); }
+    // Ljud får bara starta efter ett tryck (särskilt på iPhone). Ljudmotorn startas därför vid varje tryck på Prata, högtalaren eller Skicka.
+    function unlock() {
+      if (audioOK()) { try { actx = actx || new AC(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
+      if (!unlocked && browserOK() && engine() === 'browser') { unlocked = true; try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; TTS.speak(u); } catch (e) {} }
+    }
+
+    /* ---------- Voiceflows röst ----------
+       Med audio_events=true skickar Voiceflow agentens röst som ljudspår i samma ström som texten: start, content (mp3-bitar) och end per meddelande.
+       Varje meddelande sätts ihop, avkodas och spelas i tur och ordning utan glapp, med start först när svaret syns i chatten. */
+    function newTurn(then, gate) { return { tok: ++sayTok, parts: {}, cur: null, ended: false, decoding: 0, queued: 0, played: false, done: false, then: then, gate: gate || Promise.resolve(), chain: Promise.resolve(), text: '' }; }
+    function bytesOf(c) {
+      if (typeof c === 'string') {
+        var m = /^data:[^,]*;base64,(.*)$/.exec(c), raw = atob((m ? m[1] : c).replace(/\s+/g, '')), u = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) u[i] = raw.charCodeAt(i);
+        return u;
+      }
+      if (Array.isArray(c)) return new Uint8Array(c);
+      if (c && Array.isArray(c.data)) return new Uint8Array(c.data);
+      return null;
+    }
+    function audioTrace(p) {
+      var t = turnAudio; if (!t || t.tok !== sayTok || t.done) return;
+      if (p.state === 'start') { t.cur = String(p.messageID || Math.random()); t.parts[t.cur] = []; return; }
+      if (p.state === 'content') { try { var b = bytesOf(p.content); if (b && b.length) (t.parts[String(t.cur)] = t.parts[String(t.cur)] || []).push(b); } catch (e) {} return; }
+      if (p.state !== 'end') return;
+      var key = String(t.cur), arr = t.parts[key] || []; delete t.parts[key]; t.cur = null;
+      if (!arr.length) return;
+      var len = 0, off = 0; arr.forEach(function (a) { len += a.length; });
+      var all = new Uint8Array(len); arr.forEach(function (a) { all.set(a, off); off += a.length; });
+      t.decoding++;
+      t.chain = t.chain.then(function () { return t.gate; }).then(function () { return decode(all.buffer); })
+        .then(function (buf) { if (t.tok === sayTok && !t.done) play(buf, t); })
+        .catch(function (e) { console.warn('[Smartsvar] Rösten gick inte att spela', e); })
+        .then(function () { t.decoding--; checkTurn(t); });
+    }
+    function decode(ab) {
+      actx = actx || new AC();
+      return new Promise(function (ok, fail) { var r = actx.decodeAudioData(ab, ok, fail); if (r && r.then) r.then(ok, fail); });
+    }
+    function play(buf, t) {
+      if (actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+      var src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+      var at = Math.max(actx.currentTime + 0.05, playAt); src.start(at); playAt = at + buf.duration;
+      sources.push(src); t.queued++; t.played = true; if (!speaking) setSpeaking(true);
+      src.onended = function () { sources = sources.filter(function (x) { return x !== src; }); t.queued--; checkTurn(t); };
+    }
+    function checkTurn(t) {
+      if (!t || t.done || t.tok !== sayTok || !t.ended || t.decoding || t.queued || busy) return;
+      t.done = true; if (turnAudio === t) turnAudio = null;
+      if (speaking) setSpeaking(false);
+      // Inget ljud kom från Voiceflow: läs upp med webbläsarens röst om det är inställt, annars fortsätter samtalet ändå.
+      if (!t.played && t.text && C.voiceFallback === 'browser' && TTS && window.SpeechSynthesisUtterance) { say(t.text, t.then); return; }
+      if (t.then) setTimeout(t.then, 300);
     }
     function plainSpeech(t) {
       return clean(t).replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/https?:[/][/]\S+/g, '').replace(/www[.]\S+/g, '')
@@ -1554,12 +1611,13 @@
     }
     function setSpeaking(on) { speaking = on; field.classList.toggle('spk', on); paintMic(); sync(); }
     function stopSpeak() {
-      sayTok++;
+      sayTok++; turnAudio = null; playAt = 0;
+      sources.forEach(function (x) { try { x.onended = null; x.stop(); } catch (e) {} }); sources = [];
       if (speaking) setSpeaking(false);
       try { if (TTS && (TTS.speaking || TTS.pending)) TTS.cancel(); } catch (e) {}
     }
     function say(text, then) {
-      if (!canSpeak()) return;
+      if (!TTS || !window.SpeechSynthesisUtterance) return;
       stopSpeak();
       var t = plainSpeech(text); if (!t) return;
       var tok = ++sayTok, lang = C.voiceReplyLang || LANGTAG[guessLang(t, C.language || 'sv')] || 'sv-SE', v = pickVoice(lang);
@@ -1675,7 +1733,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.3.0', base: BASE, mount: mount,
+    __v: '4.4.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
