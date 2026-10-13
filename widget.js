@@ -12,7 +12,9 @@
     Voiceflow: svarar på ext_browserData, ext_waitingAnimation, ext_doneAnimation, ext_placeholder och
     ext_disableInput (annars fastnar flödet) och visar text, knappar, kort, karuseller och bilder.
     v4.1: thinking: 'oven' visar en pizzaugn medan boten tänker. En napolitansk pizza skjuts in i ugnen,
-    och när svaret kommer tas den ut på ett fat innan texten skrivs fram. Utan inställningen ser allt ut som förut. */
+    och när svaret kommer tas den ut på ett fat innan texten skrivs fram. Utan inställningen ser allt ut som förut.
+    v4.2: voice: true ger en stor Prata-knapp (röstinmatning i webbläsaren). status visar en rad under namnet (till exempel AI-assistent),
+    aiNotice en AI-upplysning i foten, launcherSub en andra rad i chattknappen och launcherMark: true kundens symbol i knappen. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -39,7 +41,7 @@
     heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z',
     chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
   };
-  var UI = { send: 'M12 19V5M5.5 11.5 12 5l6.5 6.5', reset: 'M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4.3h4.3', down: 'M6 9.5l6 6 6-6', x: 'M6 6l12 12M18 6 6 18', go: 'M5 12h14M13 6l6 6-6 6', left: 'M15 5l-7 7 7 7', right: 'M9 5l7 7-7 7' };
+  var UI = { send: 'M12 19V5M5.5 11.5 12 5l6.5 6.5', reset: 'M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4.3h4.3', down: 'M6 9.5l6 6 6-6', x: 'M6 6l12 12M18 6 6 18', go: 'M5 12h14M13 6l6 6-6 6', mic: 'M12 3.5a3 3 0 0 0-3 3V12a3 3 0 0 0 6 0V6.5a3 3 0 0 0-3-3zM18.5 11.5a6.5 6.5 0 0 1-13 0M12 18v2.5', left: 'M15 5l-7 7 7 7', right: 'M9 5l7 7-7 7' };
   // Chattknappens symbol: en fylld pratbubbla med en liten AI-stjärna i knappens egen färg.
   var CHAT_ICON = '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true">' +
     '<path fill="currentColor" d="M12 3C7.03 3 3 6.58 3 11c0 2.13.94 4.07 2.47 5.5l-.86 3.9c-.1.45.36.8.77.6l4.1-1.95c.8.2 1.65.3 2.52.3 4.97 0 9-3.58 9-8.35C21 6.58 16.97 3 12 3z"/>' +
@@ -384,7 +386,9 @@
     ai: 'AI-assistent', headline: 'Hur kan vi hjälpa dig?',
     reset: 'Börja om', minimize: 'Minimera', send: 'Skicka', close: 'Stäng', retry: 'Försök igen',
     failed: 'Svaret kom inte fram.', callUs: 'Ring oss gärna på {phone}.', today: 'Idag', poweredBy: 'Drivs av',
-    thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}'
+    thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}',
+    talk: 'Prata', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
+    micBlocked: 'Mikrofonen är blockerad. Tillåt den i webbläsaren, eller skriv er fråga.', micNoSpeech: 'Jag hörde inget. Tryck på Prata och försök igen.'
   };
 
   /* Konfiguration från Botfactory (clients/<kund>.json) och från v3/v4 (window.SMARTSVAR) betyder samma sak. */
@@ -452,6 +456,10 @@
   .who .av{width:38px;height:38px;font-size:calc(16px * var(--fz));background:rgba(255,255,255,.62);box-shadow:inset 0 0 0 1px var(--ring)}
   .lg{display:block;height:44px;max-width:180px;width:auto;object-fit:contain;object-position:left center;flex-shrink:0}
   .who.wm .av,.who.wm .name,.who:not(.wm) .lg{display:none}
+  .nm{min-width:0;display:flex;flex-direction:column}
+  .sub{min-width:0;margin-top:2px;font-size:12px;line-height:1.25;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub:empty{display:none}
+  .sub::before{content:'';display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#3BA55C;vertical-align:1px;box-shadow:0 0 0 2px rgba(59,165,92,.18)}
   .name{min-width:0;font-family:var(--fd);font-weight:var(--fw);font-size:calc(16px * var(--fz));line-height:1.2;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ib{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--muted);flex-shrink:0;transition:color .15s,background .15s}
   .ib:hover{color:var(--ink);background:var(--hover)}
@@ -549,6 +557,22 @@
   .send:disabled{cursor:default;opacity:.85}
   .foot{padding:8px 0 0;text-align:center;font-size:11px;letter-spacing:.01em;color:var(--muted)}
   .foot a{color:var(--ink);font-weight:600;text-decoration:none}
+  .foot .dot{margin:0 6px;opacity:.6}
+  .w[data-m=mobile] .foot .dot{display:none}.w[data-m=mobile] .foot .ain{display:block;margin-bottom:2px}
+  /* Prata-knappen: syns när fältet är tomt och ersätter då skicka-knappen. Medan besökaren pratar pulserar den. */
+  .mic{display:none;align-items:center;gap:7px;height:42px;margin:1px;padding:0 17px 0 13px;border-radius:min(var(--r3),21px);flex-shrink:0;
+    background:var(--a);color:var(--on-a);font-size:14.5px;font-weight:600;white-space:nowrap;transition:background .2s,transform .15s}
+  .mic:active{transform:scale(.96)}.mic:disabled{opacity:.5;cursor:default}
+  .field.vx .mic:not([hidden]){display:flex}
+  .field.vx .mic:not([hidden])~.send{display:none}
+  .field.rec .mic{background:var(--rec,#C8372D);color:#fff;animation:ping 1.3s ease-out infinite}
+  .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
+  .talk{display:inline-flex;align-items:center;gap:10px;margin-top:14px;padding:6px 14px 6px 6px;border-radius:var(--r3);color:var(--d);font-size:14px;font-weight:500;line-height:1.3;text-align:left;
+    box-shadow:inset 0 0 0 1px var(--line);background:rgba(255,255,255,.55);transition:background .15s;animation:fade .4s ease-out .1s both}
+  .talk:hover{background:#fff}
+  .talk .tk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--a);color:var(--on-a);flex-shrink:0}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(200,55,45,.45)}100%{box-shadow:0 0 0 12px rgba(200,55,45,0)}}
+  @keyframes breathe{50%{transform:scale(1.15)}}
 
   /* Chattknappen: en mjuk pill i kundens knappfärg med en chattbubbla (eller kundens kvadratiska logga) och en kort text.
      Ett svagt ljus uppifrån och en skugga i samma färg. Öppen blir den en rund knapp med en pil. */
@@ -564,7 +588,10 @@
   .launch .av{display:none;width:36px;height:36px;margin-left:-9px;background:#fff!important;box-shadow:0 0 0 2px rgba(255,255,255,.28)}
   .launch.logo .av{display:grid}
   .launch.logo .li{display:none}
-  .launch .lt{padding-bottom:1px}
+  .launch .lt{display:flex;flex-direction:column;align-items:flex-start;padding-bottom:1px;line-height:1.15}
+  .launch .lt2{margin-top:3px;font-size:12px;font-weight:500;letter-spacing:.01em;opacity:.82}
+  .launch .lt2:empty{display:none}
+  .launch .av.cs svg{width:80%;height:80%}
   .launch .lc{display:none}
   .w.open .launch{padding:0}
   .w.open .launch .li,.w.open .launch .av,.w.open .launch .lt{display:none}
@@ -666,23 +693,25 @@
       '<section class="panel" role="dialog">' +
         '<span class="grab" aria-hidden="true"></span>' +
         '<header class="top"><div class="bar">' +
-          '<div class="who"><span class="av"></span><img class="lg" alt=""><span class="name"></span></div>' +
+          '<div class="who"><span class="av"></span><img class="lg" alt=""><span class="nm"><span class="name"></span><span class="sub"></span></span></div>' +
           '<button class="ib rs" type="button" aria-label="' + esc(T.reset) + '" title="' + esc(T.reset) + '">' + svg(UI.reset, 17) + '</button>' +
           '<button class="ib x" type="button" aria-label="' + esc(T.minimize) + '" title="' + esc(T.minimize) + '">' + svg(UI.down, 21) + '</button></div></header>' +
         '<div class="veil" aria-hidden="true"></div>' +
         '<div class="scroll"><div class="msgs" role="log" aria-live="polite"></div></div>' +
         '<form class="composer"><div class="field"><textarea rows="1" enterkeyhint="send" aria-label="' + esc(T.input) + '"></textarea>' +
+          '<button class="mic" type="button" hidden>' + svg(UI.mic, 20) + '<span class="ml"></span></button>' +
           '<button class="send" type="submit" aria-label="' + esc(T.send) + '" disabled>' + svg(UI.send) + '</button></div>' +
           '<div class="foot"></div></form>' +
       '</section>' +
       (inline ? '' : '<div class="teaser" role="button" tabindex="0" hidden><button class="tx-x" type="button" aria-label="' + esc(T.close) + '">' + svg(UI.x, 14) + '</button>' +
         '<div class="tn"><span class="av"></span><span class="tname"></span></div><p></p><div class="chips"></div></div>' +
-        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lt"></span><span class="lc">' + svg(UI.down, 24) + '</span></button>') +
+        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lt"><span class="lt1"></span><span class="lt2"></span></span><span class="lc">' + svg(UI.down, 24) + '</span></button>') +
       '</div>';
 
     var q = function (s) { return root.querySelector(s); };
     var w = q('.w'), panel = q('.panel'), scroll = q('.scroll'), msgs = q('.msgs'),
-        ta = q('textarea'), sendB = q('.send'), launch = q('.launch'), teaser = q('.teaser');
+        ta = q('textarea'), sendB = q('.send'), launch = q('.launch'), teaser = q('.teaser'), field = q('.field'), micB = q('.mic');
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition, voiceOK = false, rec = null, listening = false, phDefault = '';
     var busy = false, inputLocked = false, log = [], isOpen = inline, squareLogo = false, logoWide = false, lastUser = '', waitText = '';
     if (inline) w.classList.add('open');
 
@@ -699,15 +728,18 @@
       var name = C.name || 'Kundtjänst', ai = clean(T.ai);
       q('.name').textContent = name;
       panel.setAttribute('aria-label', 'Chatt med ' + name);
-      ta.placeholder = C.placeholder || 'Skriv din fråga…';
+      phDefault = C.placeholder || 'Skriv din fråga…'; if (!listening) ta.placeholder = phDefault;
+      q('.sub').textContent = clean(C.status);
+      voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
       foot.innerHTML = note ? esc(note) : (by ? esc(T.poweredBy) + ' <a href="' + esc(C.poweredUrl || 'https://smartsvar.se') + '" target="_blank" rel="noopener">' + esc(by) + '</a>' : '');
+      var aiN = clean(C.aiNotice); if (aiN) foot.innerHTML = '<span class="ain">' + esc(aiN) + '</span>' + (foot.innerHTML ? '<span class="dot" aria-hidden="true">·</span>' + foot.innerHTML : '');
       foot.hidden = !foot.innerHTML;
       var hero = q('.hero'); if (hero) paintHero(hero);
       var intro = q('.intro'); if (intro) paintIntro(intro);
       var sc = q('.start'); if (sc) sc.parentNode.replaceChild(startBox(), sc);
       if (launch) {
-        q('.lt').textContent = clean(C.launcherText) || 'Fråga oss'; launch.setAttribute('aria-label', T.chatWith.replace('{name}', name));
+        q('.lt1').textContent = clean(C.launcherText) || 'Fråga oss'; q('.lt2').textContent = clean(C.launcherSub); launch.setAttribute('aria-label', T.chatWith.replace('{name}', name));
         q('.tname').innerHTML = '<b>' + esc(name) + '</b>' + (ai ? ' · ' + esc(ai) : '');
         teaser.querySelector('p').textContent = clean(C.teaser) || opening();
         var tc = teaser.querySelector('.chips'); tc.innerHTML = '';
@@ -747,7 +779,7 @@
       if (img) img.onerror = function () { squareLogo = false; if (C.mark && img.src.indexOf(C.mark) >= 0) C.mark = ''; paintMark(); };
     }
     // Chattknappen visar kundens logga bara om den är en riktig bild, annars chattbubblan (aldrig en bokstav).
-    function paintMark() { var m = mark(); [].forEach.call(root.querySelectorAll('.av'), function (a) { paintAv(a, m); }); if (launch) launch.classList.toggle('logo', !!m.img); }
+    function paintMark() { var m = mark(); [].forEach.call(root.querySelectorAll('.av'), function (a) { paintAv(a, m); }); if (launch) launch.classList.toggle('logo', !!m.img || (!!m.own && !!C.launcherMark)); }
 
     /* ---------- Meddelanden ---------- */
     function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -1327,6 +1359,7 @@
       // Har Voiceflow-flödet en egen öppning visas den direkt (den som minns från förra besöket), annars den som står i inställningarna.
       if (known) { h.dataset.vf = '1'; h.querySelector('.op').innerHTML = md(known); }
       if (!w.classList.contains('has') && suggestions().length) h.appendChild(startBox());
+      if (!w.classList.contains('has') && voiceOK) h.appendChild(talkEl());
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
       // Voiceflow-flödets egen öppning ersätter den inställda så fort den kommer, så länge besökaren inte har skrivit något.
       if (!C.demo && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
@@ -1345,8 +1378,9 @@
     function send(text, req) {
       text = String(text || '').trim();
       if (!text || busy || inputLocked) return;
+      if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); }
       open(); hideTeaser(); flushTypers();
-      [].forEach.call(msgs.querySelectorAll('.chips,.list'), function (n) { n.remove(); });
+      [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk'), function (n) { n.remove(); });
       if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
       w.classList.add('has');
       lastUser = text;
@@ -1373,6 +1407,7 @@
     }
     function reset() {
       if (busy) return;
+      if (rec) { try { rec.abort(); } catch (e) {} } if (listening) setListening(false);
       dropTypers(); epoch++; stick = true;
       log = []; store(id, null); store(id + ':u', null); store(id + ':on', null);
       launchP = null; waitText = ''; lastUser = ''; inputLocked = false; ta.disabled = false;
@@ -1414,7 +1449,56 @@
       if (typeof glow === 'function' && msgs) glow();
     }
     function hideTeaser() { if (teaser) teaser.hidden = true; }
-    function sync() { sendB.disabled = busy || inputLocked || !ta.value.trim(); }
+    function sync() {
+      sendB.disabled = busy || inputLocked || !ta.value.trim();
+      if (field) field.classList.toggle('vx', voiceOK && (listening || !ta.value.trim()));
+      if (micB) micB.disabled = !listening && (busy || inputLocked);
+    }
+
+    /* ---------- Röstinmatning (voice: true) ----------
+       Webbläsarens egen taligenkänning: Chrome, Edge och Safari (även iPhone). Där den saknas syns ingen mikrofon.
+       Texten skrivs in i fältet medan besökaren pratar och skickas när hen slutar (voiceAutoSend: false låter besökaren skicka själv). */
+    function paintMic() { if (micB) micB.querySelector('.ml').textContent = listening ? T.listening : T.talk; }
+    function setListening(on) {
+      listening = on; field.classList.toggle('rec', on); paintMic();
+      ta.placeholder = on ? T.listeningPh : phDefault; sync();
+    }
+    var noteT = 0;
+    function micNote(msg) { clearTimeout(noteT); ta.placeholder = msg; noteT = setTimeout(function () { if (!listening) ta.placeholder = phDefault; }, 4500); }
+    function voiceLang() {
+      if (C.voiceLang) return C.voiceLang;
+      var l = (navigator.language || 'sv-SE');
+      return /^sv/i.test(l) ? 'sv-SE' : l;
+    }
+    function listen() {
+      if (!voiceOK) return;
+      if (listening) { try { rec.stop(); } catch (e) { setListening(false); } return; }
+      if (busy || inputLocked) return;
+      open(); hideTeaser();
+      var heard = '';
+      rec = new SR(); rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+      rec.onresult = function (e) {
+        var fin = '', tmp = '';
+        for (var i = 0; i < e.results.length; i++) { var r = e.results[i]; if (r.isFinal) fin += r[0].transcript; else tmp += r[0].transcript; }
+        heard = fin; ta.value = (fin + ' ' + tmp).replace(/\s+/g, ' ').trim(); grow(); sync();
+      };
+      rec.onerror = function (e) {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { setListening(false); micNote(T.micBlocked); }
+        else if (e.error === 'no-speech') { setListening(false); micNote(T.micNoSpeech); }
+      };
+      rec.onend = function () {
+        var was = listening; setListening(false);
+        var t = ta.value.trim();
+        if (was && t && heard.trim() && C.voiceAutoSend !== false) send(t);
+      };
+      ta.value = ''; grow();
+      try { rec.start(); setListening(true); } catch (e) { setListening(false); }
+    }
+    function talkEl() {
+      var b = el('button', 'talk'); b.type = 'button';
+      b.innerHTML = '<span class="tk">' + svg(UI.mic, 16) + '</span><span></span>';
+      b.lastChild.textContent = T.talkHint; b.onclick = listen; return b;
+    }
     function grow() { ta.style.height = '42px'; ta.style.height = Math.min(ta.scrollHeight, 124) + 'px'; }
 
     /* ---------- Händelser ---------- */
@@ -1426,7 +1510,7 @@
     scroll.addEventListener('scroll', function () { if (scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop < 4) stick = true; }, { passive: true });
     ta.oninput = function () { grow(); sync(); };
     ta.onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
-    q('.rs').onclick = reset; q('.x').onclick = close;
+    q('.rs').onclick = reset; q('.x').onclick = close; micB.onclick = listen;
     if (launch) {
       launch.onclick = function () { isOpen ? close() : open(); };
       q('.scrim').onclick = close;
@@ -1491,7 +1575,7 @@
       update: apply, open: open, close: close, ask: send, send: send,
       toggle: function () { isOpen ? close() : open(); },
       destroy: function () {
-        alive = false; lock(false);
+        alive = false; lock(false); if (rec) { try { rec.abort(); } catch (e) {} }
         document.removeEventListener('keydown', onKey); document.removeEventListener('click', onDocClick);
         if (ro) ro.disconnect(); else { window.removeEventListener('resize', measure); if (window.visualViewport) { visualViewport.removeEventListener('resize', measure); visualViewport.removeEventListener('scroll', measure); } }
         host.remove();
@@ -1502,7 +1586,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.1.0', base: BASE, mount: mount,
+    __v: '4.2.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
