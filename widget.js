@@ -14,7 +14,9 @@
     v4.1: thinking: 'oven' visar en pizzaugn medan boten tänker. En napolitansk pizza skjuts in i ugnen,
     och när svaret kommer tas den ut på ett fat innan texten skrivs fram. Utan inställningen ser allt ut som förut.
     v4.2: voice: true ger en stor Prata-knapp (röstinmatning i webbläsaren). status visar en rad under namnet (till exempel AI-assistent),
-    aiNotice en AI-upplysning i foten, launcherSub en andra rad i chattknappen och launcherMark: true kundens symbol i knappen. */
+    aiNotice en AI-upplysning i foten, launcherSub en andra rad i chattknappen och launcherMark: true kundens symbol i knappen.
+    v4.3: chatten svarar med röst. Frågar besökaren med rösten läses svaret upp och chatten lyssnar sedan igen (ett röstsamtal).
+    En högtalarknapp i headern läser upp alla svar. voiceReply: false stänger av uppläsningen, voiceLoop: false lyssnar inte igen. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -41,7 +43,7 @@
     heart: 'M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7z',
     chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
   };
-  var UI = { send: 'M12 19V5M5.5 11.5 12 5l6.5 6.5', reset: 'M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4.3h4.3', down: 'M6 9.5l6 6 6-6', x: 'M6 6l12 12M18 6 6 18', go: 'M5 12h14M13 6l6 6-6 6', mic: 'M12 3.5a3 3 0 0 0-3 3V12a3 3 0 0 0 6 0V6.5a3 3 0 0 0-3-3zM18.5 11.5a6.5 6.5 0 0 1-13 0M12 18v2.5', left: 'M15 5l-7 7 7 7', right: 'M9 5l7 7-7 7' };
+  var UI = { send: 'M12 19V5M5.5 11.5 12 5l6.5 6.5', reset: 'M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4.3h4.3', down: 'M6 9.5l6 6 6-6', x: 'M6 6l12 12M18 6 6 18', go: 'M5 12h14M13 6l6 6-6 6', vol: 'M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13', mute: 'M11 5 6 9H3v6h3l5 4zM16 9.5l5 5M21 9.5l-5 5', mic: 'M12 3.5a3 3 0 0 0-3 3V12a3 3 0 0 0 6 0V6.5a3 3 0 0 0-3-3zM18.5 11.5a6.5 6.5 0 0 1-13 0M12 18v2.5', left: 'M15 5l-7 7 7 7', right: 'M9 5l7 7-7 7' };
   // Chattknappens symbol: en fylld pratbubbla med en liten AI-stjärna i knappens egen färg.
   var CHAT_ICON = '<svg viewBox="0 0 24 24" width="100%" height="100%" aria-hidden="true">' +
     '<path fill="currentColor" d="M12 3C7.03 3 3 6.58 3 11c0 2.13.94 4.07 2.47 5.5l-.86 3.9c-.1.45.36.8.77.6l4.1-1.95c.8.2 1.65.3 2.52.3 4.97 0 9-3.58 9-8.35C21 6.58 16.97 3 12 3z"/>' +
@@ -388,6 +390,7 @@
     failed: 'Svaret kom inte fram.', callUs: 'Ring oss gärna på {phone}.', today: 'Idag', poweredBy: 'Drivs av',
     thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}',
     talk: 'Prata', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
+    speaking: 'Stoppa', readOn: 'Läs upp svaren', readOff: 'Sluta läsa upp svaren',
     micBlocked: 'Mikrofonen är blockerad. Tillåt den i webbläsaren, eller skriv er fråga.', micNoSpeech: 'Jag hörde inget. Tryck på Prata och försök igen.'
   };
 
@@ -567,6 +570,13 @@
   .field.vx .mic:not([hidden])~.send{display:none}
   .field.rec .mic{background:var(--rec,#C8372D);color:#fff;animation:ping 1.3s ease-out infinite}
   .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
+  .mic .wv{display:none;align-items:center;gap:2.5px;height:20px}
+  .mic .wv i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:wave .9s ease-in-out infinite}
+  .mic .wv i:nth-child(2){animation-delay:-.65s}.mic .wv i:nth-child(3){animation-delay:-.35s}.mic .wv i:nth-child(4){animation-delay:-.15s}
+  .field.spk .mic svg{display:none}.field.spk .mic .wv{display:flex}
+  .field.spk .mic{background:var(--d);color:#fff}
+  .snd.on{color:var(--d);background:var(--chip)}
+  @keyframes wave{0%,100%{height:5px}50%{height:18px}}
   .talk{display:inline-flex;align-items:center;gap:10px;margin-top:14px;padding:6px 14px 6px 6px;border-radius:var(--r3);color:var(--d);font-size:14px;font-weight:500;line-height:1.3;text-align:left;
     box-shadow:inset 0 0 0 1px var(--line);background:rgba(255,255,255,.55);transition:background .15s;animation:fade .4s ease-out .1s both}
   .talk:hover{background:#fff}
@@ -694,12 +704,13 @@
         '<span class="grab" aria-hidden="true"></span>' +
         '<header class="top"><div class="bar">' +
           '<div class="who"><span class="av"></span><img class="lg" alt=""><span class="nm"><span class="name"></span><span class="sub"></span></span></div>' +
+          '<button class="ib snd" type="button" hidden></button>' +
           '<button class="ib rs" type="button" aria-label="' + esc(T.reset) + '" title="' + esc(T.reset) + '">' + svg(UI.reset, 17) + '</button>' +
           '<button class="ib x" type="button" aria-label="' + esc(T.minimize) + '" title="' + esc(T.minimize) + '">' + svg(UI.down, 21) + '</button></div></header>' +
         '<div class="veil" aria-hidden="true"></div>' +
         '<div class="scroll"><div class="msgs" role="log" aria-live="polite"></div></div>' +
         '<form class="composer"><div class="field"><textarea rows="1" enterkeyhint="send" aria-label="' + esc(T.input) + '"></textarea>' +
-          '<button class="mic" type="button" hidden>' + svg(UI.mic, 20) + '<span class="ml"></span></button>' +
+          '<button class="mic" type="button" hidden>' + svg(UI.mic, 20) + '<span class="wv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="ml"></span></button>' +
           '<button class="send" type="submit" aria-label="' + esc(T.send) + '" disabled>' + svg(UI.send) + '</button></div>' +
           '<div class="foot"></div></form>' +
       '</section>' +
@@ -712,6 +723,7 @@
     var w = q('.w'), panel = q('.panel'), scroll = q('.scroll'), msgs = q('.msgs'),
         ta = q('textarea'), sendB = q('.send'), launch = q('.launch'), teaser = q('.teaser'), field = q('.field'), micB = q('.mic');
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition, voiceOK = false, rec = null, listening = false, phDefault = '';
+    var TTS = window.speechSynthesis, speaking = false, sayTok = 0, unlocked = false, viaVoice = false, turnVoice = false, speakOn = false;
     var busy = false, inputLocked = false, log = [], isOpen = inline, squareLogo = false, logoWide = false, lastUser = '', waitText = '';
     if (inline) w.classList.add('open');
 
@@ -731,6 +743,7 @@
       phDefault = C.placeholder || 'Skriv din fråga…'; if (!listening) ta.placeholder = phDefault;
       q('.sub').textContent = clean(C.status);
       voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync();
+      speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
       foot.innerHTML = note ? esc(note) : (by ? esc(T.poweredBy) + ' <a href="' + esc(C.poweredUrl || 'https://smartsvar.se') + '" target="_blank" rel="noopener">' + esc(by) + '</a>' : '');
       var aiN = clean(C.aiNotice); if (aiN) foot.innerHTML = '<span class="ain">' + esc(aiN) + '</span>' + (foot.innerHTML ? '<span class="dot" aria-hidden="true">·</span>' + foot.innerHTML : '');
@@ -1035,8 +1048,9 @@
           });
         });
       }
-      function takeThink() { var t = think; think = null; return t; }
-      function dropThink() { if (think) { think.remove(); think = null; } }
+      var readyFn, readyP = new Promise(function (r) { readyFn = r; });
+      function takeThink() { var t = think; think = null; readyFn(); return t; }
+      function dropThink() { if (think) { think.remove(); think = null; } readyFn(); }
       function hasText() { return blocks.some(function (b) { return b.t === 'text' && showText(b.text); }); }
       function leadText(kind) { var l = guessLang(lastUser, C.language || 'sv'), m = kind === 'btns' ? CHOOSE : OPTIONS; return m[l] || m.sv; }
       // Kommer knappar eller kort utan någon text skrivs en kort inledning först (där "Tänker" stod).
@@ -1049,6 +1063,7 @@
         dropThink(); shown = true; msgs.appendChild(node); pinUntil = Date.now() + 600; pin(); glow();
       }
       rp.blocks = blocks;
+      rp.ready = readyP;
       rp.shown = function () { return shown; };
       rp.open = function () {
         if (cur) return;
@@ -1359,7 +1374,7 @@
       // Har Voiceflow-flödet en egen öppning visas den direkt (den som minns från förra besöket), annars den som står i inställningarna.
       if (known) { h.dataset.vf = '1'; h.querySelector('.op').innerHTML = md(known); }
       if (!w.classList.contains('has') && suggestions().length) h.appendChild(startBox());
-      if (!w.classList.contains('has') && voiceOK) h.appendChild(talkEl());
+      if (!w.classList.contains('has') && voiceOK && C.voiceHint) h.appendChild(talkEl());
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
       // Voiceflow-flödets egen öppning ersätter den inställda så fort den kommer, så länge besökaren inte har skrivit något.
       if (!C.demo && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
@@ -1379,6 +1394,7 @@
       text = String(text || '').trim();
       if (!text || busy || inputLocked) return;
       if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); }
+      turnVoice = viaVoice; viaVoice = false; stopSpeak();
       open(); hideTeaser(); flushTypers();
       [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk'), function (n) { n.remove(); });
       if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
@@ -1398,6 +1414,14 @@
         var done = rp.finish(), vis = visible(rp.blocks);
         if (!vis.length) throw new Error('Tomt svar från Voiceflow');
         log.push({ r: 'bot', blocks: vis }); save();
+        var byVoice = turnVoice; turnVoice = false;
+        if (canSpeak() && (byVoice || speakOn)) {
+          var words = textOfBlocks(vis), ep0 = epoch;
+          rp.ready.then(function () {
+            if (!alive || ep0 !== epoch || !isOpen) return;
+            say(words, byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch) listen(); } : null);
+          });
+        }
         done.catch(function (e) { console.warn('[Smartsvar]', e); });
       }).catch(function (err) {
         if (!alive) return;
@@ -1407,7 +1431,7 @@
     }
     function reset() {
       if (busy) return;
-      if (rec) { try { rec.abort(); } catch (e) {} } if (listening) setListening(false);
+      if (rec) { try { rec.abort(); } catch (e) {} } if (listening) setListening(false); stopSpeak();
       dropTypers(); epoch++; stick = true;
       log = []; store(id, null); store(id + ':u', null); store(id + ':on', null);
       launchP = null; waitText = ''; lastUser = ''; inputLocked = false; ta.disabled = false;
@@ -1433,6 +1457,7 @@
     function close() {
       if (inline || !isOpen) return; isOpen = false;
       w.classList.remove('open'); launch.setAttribute('aria-expanded', 'false'); ta.blur(); lock(false);
+      if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); } stopSpeak();
       store(id + ':open', null);
     }
     function sizeNow() {
@@ -1451,14 +1476,18 @@
     function hideTeaser() { if (teaser) teaser.hidden = true; }
     function sync() {
       sendB.disabled = busy || inputLocked || !ta.value.trim();
-      if (field) field.classList.toggle('vx', voiceOK && (listening || !ta.value.trim()));
-      if (micB) micB.disabled = !listening && (busy || inputLocked);
+      if (field) field.classList.toggle('vx', voiceOK && (listening || speaking || !ta.value.trim()));
+      if (micB) micB.disabled = !listening && !speaking && (busy || inputLocked);
     }
 
     /* ---------- Röstinmatning (voice: true) ----------
        Webbläsarens egen taligenkänning: Chrome, Edge och Safari (även iPhone). Där den saknas syns ingen mikrofon.
        Texten skrivs in i fältet medan besökaren pratar och skickas när hen slutar (voiceAutoSend: false låter besökaren skicka själv). */
-    function paintMic() { if (micB) micB.querySelector('.ml').textContent = listening ? T.listening : T.talk; }
+    function paintMic() {
+      if (!micB) return;
+      micB.querySelector('.ml').textContent = speaking ? T.speaking : listening ? T.listening : T.talk;
+      micB.setAttribute('aria-label', speaking ? T.speaking : listening ? T.listening : T.talk);
+    }
     function setListening(on) {
       listening = on; field.classList.toggle('rec', on); paintMic();
       ta.placeholder = on ? T.listeningPh : phDefault; sync();
@@ -1472,8 +1501,10 @@
     }
     function listen() {
       if (!voiceOK) return;
+      if (speaking) { stopSpeak(); return; }
       if (listening) { try { rec.stop(); } catch (e) { setListening(false); } return; }
       if (busy || inputLocked) return;
+      unlock();
       open(); hideTeaser();
       var heard = '';
       rec = new SR(); rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
@@ -1489,7 +1520,7 @@
       rec.onend = function () {
         var was = listening; setListening(false);
         var t = ta.value.trim();
-        if (was && t && heard.trim() && C.voiceAutoSend !== false) send(t);
+        if (was && t && heard.trim() && C.voiceAutoSend !== false) { viaVoice = true; send(t); }
       };
       ta.value = ''; grow();
       try { rec.start(); setListening(true); } catch (e) { setListening(false); }
@@ -1498,6 +1529,62 @@
       var b = el('button', 'talk'); b.type = 'button';
       b.innerHTML = '<span class="tk">' + svg(UI.mic, 16) + '</span><span></span>';
       b.lastChild.textContent = T.talkHint; b.onclick = listen; return b;
+    }
+    /* ---------- Uppläsning av svaren (webbläsarens egen röst) ----------
+       Rösten väljs efter svarets språk. De naturligaste rösterna väljs först (till exempel Microsofts Natural-röster i Edge och Alva på Apple).
+       voiceName väljer en bestämd röst, voiceRate talhastigheten. */
+    var LANGTAG = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT' };
+    function canSpeak() { return !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance); }
+    function unlock() { // iPhone släpper bara fram ljud som startas av ett tryck. Ett tyst ord vid första trycket låser upp rösten.
+      if (unlocked || !canSpeak()) return; unlocked = true;
+      try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; TTS.speak(u); } catch (e) {}
+    }
+    function plainSpeech(t) {
+      return clean(t).replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/https?:[/][/]\S+/g, '').replace(/www[.]\S+/g, '')
+        .replace(/\*\*/g, '').replace(/^\s*(?:[-•*]|\d+[.)])\s+/gm, '').replace(/^#+\s*/gm, '').replace(/[ \t]+/g, ' ').trim();
+    }
+    function pickVoice(lang) {
+      var all = (TTS.getVoices && TTS.getVoices()) || [], p = lang.slice(0, 2).toLowerCase();
+      if (C.voiceName) { var named = all.filter(function (v) { return v.name === C.voiceName; }); if (named.length) return named[0]; }
+      var c = all.filter(function (v) { return String(v.lang || '').toLowerCase().replace('_', '-').indexOf(p) === 0; });
+      if (!c.length) return null;
+      var good = /natural|neural|premium|enhanced|alva|klara|online|google/i;
+      c.sort(function (a, b) { return (good.test(b.name) ? 1 : 0) - (good.test(a.name) ? 1 : 0); });
+      return c[0];
+    }
+    function setSpeaking(on) { speaking = on; field.classList.toggle('spk', on); paintMic(); sync(); }
+    function stopSpeak() {
+      sayTok++;
+      if (speaking) setSpeaking(false);
+      try { if (TTS && (TTS.speaking || TTS.pending)) TTS.cancel(); } catch (e) {}
+    }
+    function say(text, then) {
+      if (!canSpeak()) return;
+      stopSpeak();
+      var t = plainSpeech(text); if (!t) return;
+      var tok = ++sayTok, lang = C.voiceReplyLang || LANGTAG[guessLang(t, C.language || 'sv')] || 'sv-SE', v = pickVoice(lang);
+      // Kortare bitar, mening för mening: Chrome tystnar annars mitt i långa svar.
+      var parts = [], cur = '';
+      (t.match(/[^.!?\n]+[.!?]*|\n+/g) || [t]).forEach(function (s) {
+        s = s.trim(); if (!s) return;
+        if ((cur + ' ' + s).length > 180 && cur) { parts.push(cur); cur = s; } else cur = cur ? cur + ' ' + s : s;
+      });
+      if (cur) parts.push(cur);
+      setSpeaking(true);
+      parts.forEach(function (p, i) {
+        var u = new SpeechSynthesisUtterance(p); u.lang = lang; if (v) u.voice = v; u.rate = num(C.voiceRate, 1.02);
+        if (i === parts.length - 1) u.onend = u.onerror = function () {
+          if (tok !== sayTok) return;
+          setSpeaking(false); if (then) setTimeout(then, 250);
+        };
+        try { TTS.speak(u); } catch (e) {}
+      });
+    }
+    function paintSnd() {
+      var b = q('.snd'); if (!b) return;
+      b.innerHTML = svg(speakOn ? UI.vol : UI.mute, 18);
+      b.classList.toggle('on', speakOn); b.setAttribute('aria-pressed', speakOn ? 'true' : 'false');
+      b.setAttribute('aria-label', speakOn ? T.readOff : T.readOn); b.title = speakOn ? T.readOff : T.readOn;
     }
     function grow() { ta.style.height = '42px'; ta.style.height = Math.min(ta.scrollHeight, 124) + 'px'; }
 
@@ -1508,9 +1595,11 @@
     scroll.addEventListener('wheel', function (e) { if (e.deltaY < 0) stick = false; }, { passive: true });
     scroll.addEventListener('touchmove', function () { stick = false; }, { passive: true });
     scroll.addEventListener('scroll', function () { if (scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop < 4) stick = true; }, { passive: true });
-    ta.oninput = function () { grow(); sync(); };
+    ta.oninput = function () { if (speaking) stopSpeak(); grow(); sync(); };
     ta.onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
     q('.rs').onclick = reset; q('.x').onclick = close; micB.onclick = listen;
+    q('.snd').onclick = function () { unlock(); speakOn = !speakOn; store(id + ':spk', speakOn ? '1' : null); paintSnd(); if (!speakOn) stopSpeak(); };
+    if (TTS && TTS.getVoices) { TTS.getVoices(); if ('onvoiceschanged' in TTS) TTS.addEventListener('voiceschanged', function () {}); }
     if (launch) {
       launch.onclick = function () { isOpen ? close() : open(); };
       q('.scrim').onclick = close;
@@ -1575,7 +1664,7 @@
       update: apply, open: open, close: close, ask: send, send: send,
       toggle: function () { isOpen ? close() : open(); },
       destroy: function () {
-        alive = false; lock(false); if (rec) { try { rec.abort(); } catch (e) {} }
+        alive = false; lock(false); if (rec) { try { rec.abort(); } catch (e) {} } try { if (TTS) TTS.cancel(); } catch (e) {}
         document.removeEventListener('keydown', onKey); document.removeEventListener('click', onDocClick);
         if (ro) ro.disconnect(); else { window.removeEventListener('resize', measure); if (window.visualViewport) { visualViewport.removeEventListener('resize', measure); visualViewport.removeEventListener('scroll', measure); } }
         host.remove();
@@ -1586,7 +1675,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.2.0', base: BASE, mount: mount,
+    __v: '4.3.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
