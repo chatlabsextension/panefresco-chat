@@ -36,8 +36,17 @@ window.SMARTSVAR = {
   suggestions: ['Boka bord', 'Vad finns på lunch?', 'Har ni glutenfritt?'],
   placeholder: 'Skriv er fråga…',
   launcherText: 'Fråga oss',
+  launcherSub: 'AI-assistent · skriv eller prata',
+  launcherMark: true,
+
+  // EU:s AI-förordning: besökaren ska veta att hen pratar med en AI. Står under namnet och i foten.
+  status: 'AI-assistent · svarar direkt',
+  aiNotice: 'Ni chattar med en AI, som kan ha fel.',
+
+  // Röstinmatning: en stor Prata-knapp i skrivfältet och ett tips i starten.
+  voice: true,
   teaser: 'Benvenuti! Undrar ni något om menyn, eller vill ni boka bord?',
-  texts: { ai: 'Digital assistent', input: 'Skriv er fråga' },
+  texts: { ai: 'AI-assistent', input: 'Skriv er fråga' },
 
   thinking: 'oven',
 
@@ -60,6 +69,13 @@ window.SMARTSVAR = {
     '.chips button:hover{background:#EEF2FB}',
     '.card .cbtn{background:#fff;box-shadow:inset 0 0 0 1px rgba(39,71,160,.3)}',
     '.teaser{background:#FBF6EA}',
+    // Chattknappen: pizzan på ett krämvitt fat i den blå knappen, med en tunn citronring
+    '.launch{height:60px;padding:0 24px 0 11px;gap:12px}',
+    '.launch .av{width:42px!important;height:42px!important;margin-left:0!important;background:#FBF6EA!important;box-shadow:0 0 0 2px #F4C430,0 2px 6px rgba(0,0,0,.18)!important}',
+    '.launch .lt1{font-family:"Cinzel",Georgia,serif;font-weight:700;font-size:16px;letter-spacing:.04em}',
+    '.w[data-m=mobile] .launch{width:64px;height:64px;padding:0}',
+    '.w[data-m=mobile] .launch .av{width:50px!important;height:50px!important}',
+    '.foot{font-size:11.5px}',
     '.teaser .chips button{background:#fff}',
     '.shim{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;font-weight:600}'
   ].join('')
