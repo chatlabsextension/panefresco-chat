@@ -19,7 +19,12 @@
     En högtalarknapp i headern läser upp alla svar. voiceReply: false stänger av uppläsningen, voiceLoop: false lyssnar inte igen.
     v4.4: rösten kommer från Voiceflow (agentens röst i projektet) via audio_events i strömmen. voiceEngine: 'browser'
     använder webbläsarens röst i stället, och voiceFallback: 'browser' läser upp med den om Voiceflow inte skickar något ljud.
-    v4.5: rösten spelas medan den strömmar in (MediaSource), och i ett röstsamtal väntar den inte på pizzaugnen. */
+    v4.5: rösten spelas medan den strömmar in (MediaSource), och i ett röstsamtal väntar den inte på pizzaugnen.
+    v4.6: tydliga meddelanden när mikrofonen inte går att starta, med rätt instruktion för iPhone och Android.
+    v4.7: rösten lyssnar på chattens språk (language) i stället för webbläsarens, byter till gästens språk när gästen skrivit
+    på ett annat, och en språkknapp bredvid Prata låter gästen välja själv (voiceLangs styr vilka språk som finns).
+    v4.8: mikrofonen och rösten stängs av helt när besökaren lämnar sidan, byter flik eller stänger chatten, och mikrofonen
+    stängs alltid efter högst 20 sekunder. Röstsamtalet lyssnar bara igen när sidan syns. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -394,7 +399,13 @@
     thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}',
     talk: 'Prata', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
     speaking: 'Stoppa', readOn: 'Läs upp svaren', readOff: 'Sluta läsa upp svaren',
-    micBlocked: 'Mikrofonen är blockerad. Tillåt den i webbläsaren, eller skriv er fråga.', micNoSpeech: 'Jag hörde inget. Tryck på Prata och försök igen.'
+    micBlocked: 'Mikrofonen är blockerad. Tillåt den för den här sidan i webbläsaren och försök igen, eller skriv er fråga.',
+    micBlockedIOS: 'Mikrofonen är blockerad. Gå till Inställningar → Safari → Mikrofon och välj Tillåt (i Chrome: Inställningar → Chrome → Mikrofon), ladda om sidan och försök igen.',
+    micDictation: 'Röst kräver att diktering är på i telefonen: Inställningar → Allmänt → Tangentbord → Diktering. Ni kan också trycka på mikrofonen på tangentbordet.',
+    micNone: 'Hittar ingen mikrofon. Kontrollera att ingen annan app använder den och försök igen.',
+    micNet: 'Röstigenkänningen svarar inte just nu. Försök igen om en stund, eller skriv er fråga.',
+    micOther: 'Rösten gick inte att starta i den här webbläsaren. Skriv gärna er fråga i stället.',
+    micNoSpeech: 'Jag hörde inget. Tryck på Prata och försök igen.'
   };
 
   /* Konfiguration från Botfactory (clients/<kund>.json) och från v3/v4 (window.SMARTSVAR) betyder samma sak. */
@@ -566,10 +577,16 @@
   .foot .dot{margin:0 6px;opacity:.6}
   .w[data-m=mobile] .foot .dot{display:none}.w[data-m=mobile] .foot .ain{display:block;margin-bottom:2px}
   /* Prata-knappen: syns när fältet är tomt och ersätter då skicka-knappen. Medan besökaren pratar pulserar den. */
+  .vnote{margin:0 4px 8px;padding:9px 12px;border-radius:12px;background:#fff;box-shadow:0 0 0 1px var(--line);font-size:13px;line-height:1.45;color:var(--ink);animation:fade .25s ease-out both}
   .mic{display:none;align-items:center;gap:7px;height:42px;margin:1px;padding:0 17px 0 13px;border-radius:min(var(--r3),21px);flex-shrink:0;
     background:var(--a);color:var(--on-a);font-size:14.5px;font-weight:600;white-space:nowrap;transition:background .2s,transform .15s}
   .mic:active{transform:scale(.96)}.mic:disabled{opacity:.5;cursor:default}
   .field.vx .mic:not([hidden]){display:flex}
+  .vl{display:none;width:38px;height:38px;margin:3px 2px;border-radius:50%;place-items:center;flex-shrink:0;font-size:12px;font-weight:700;letter-spacing:.04em;
+    color:var(--d);background:var(--chip);transition:background .15s}
+  .vl:hover{background:var(--chip2)}
+  .field.vx .vl:not([hidden]){display:grid}
+  .field.spk .vl{display:none!important}
   .field.vx .mic:not([hidden])~.send{display:none}
   .field.rec .mic{background:var(--rec,#C8372D);color:#fff;animation:ping 1.3s ease-out infinite}
   .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
@@ -712,7 +729,8 @@
           '<button class="ib x" type="button" aria-label="' + esc(T.minimize) + '" title="' + esc(T.minimize) + '">' + svg(UI.down, 21) + '</button></div></header>' +
         '<div class="veil" aria-hidden="true"></div>' +
         '<div class="scroll"><div class="msgs" role="log" aria-live="polite"></div></div>' +
-        '<form class="composer"><div class="field"><textarea rows="1" enterkeyhint="send" aria-label="' + esc(T.input) + '"></textarea>' +
+        '<form class="composer"><div class="vnote" role="status" hidden></div><div class="field"><textarea rows="1" enterkeyhint="send" aria-label="' + esc(T.input) + '"></textarea>' +
+          '<button class="vl" type="button" hidden></button>' +
           '<button class="mic" type="button" hidden>' + svg(UI.mic, 20) + '<span class="wv" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="ml"></span></button>' +
           '<button class="send" type="submit" aria-label="' + esc(T.send) + '" disabled>' + svg(UI.send) + '</button></div>' +
           '<div class="foot"></div></form>' +
@@ -746,7 +764,8 @@
       panel.setAttribute('aria-label', 'Chatt med ' + name);
       phDefault = C.placeholder || 'Skriv din fråga…'; if (!listening) ta.placeholder = phDefault;
       q('.sub').textContent = clean(C.status);
-      voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync();
+      vPick = store(id + ':vl') || null;
+      voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
       foot.innerHTML = note ? esc(note) : (by ? esc(T.poweredBy) + ' <a href="' + esc(C.poweredUrl || 'https://smartsvar.se') + '" target="_blank" rel="noopener">' + esc(by) + '</a>' : '');
@@ -1404,7 +1423,7 @@
       [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk'), function (n) { n.remove(); });
       if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
       w.classList.add('has');
-      lastUser = text;
+      lastUser = text; paintLang();
       var me = addMe(text); log.push({ r: 'me', text: text }); save();
       ta.value = ''; grow(); busy = true; sync(); glow();
       if (w.dataset.m === 'mobile') ta.blur();
@@ -1416,7 +1435,7 @@
       setTimeout(function () { follow(me); }, 30);
       var byVoice = turnVoice, ep0 = epoch; turnVoice = false;
       var wantVoice = canSpeak() && (byVoice || speakOn);
-      var again = byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch && !busy) listen(); } : null;
+      var again = byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch && !busy && !document.hidden) listen(); } : null;
       var tA = wantVoice && audioOK() && !C.demo ? (turnAudio = newTurn(again, byVoice ? null : rp.ready)) : null;
       answer(action, rp).then(function () {
         if (!alive) return;
@@ -1436,7 +1455,7 @@
     }
     function reset() {
       if (busy) return;
-      if (rec) { try { rec.abort(); } catch (e) {} } if (listening) setListening(false); stopSpeak();
+      hush();
       dropTypers(); epoch++; stick = true;
       log = []; store(id, null); store(id + ':u', null); store(id + ':on', null);
       launchP = null; waitText = ''; lastUser = ''; inputLocked = false; ta.disabled = false;
@@ -1462,7 +1481,7 @@
     function close() {
       if (inline || !isOpen) return; isOpen = false;
       w.classList.remove('open'); launch.setAttribute('aria-expanded', 'false'); ta.blur(); lock(false);
-      if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); } stopSpeak();
+      hush();
       store(id + ':open', null);
     }
     function sizeNow() {
@@ -1495,21 +1514,48 @@
     }
     function setListening(on) {
       listening = on; field.classList.toggle('rec', on); paintMic();
-      ta.placeholder = on ? T.listeningPh : phDefault; sync();
+      ta.placeholder = on ? T.listeningPh + ' (' + (LANGNAME[voiceLang().slice(0, 2).toLowerCase()] || voiceLang()) + ')' : phDefault; sync(); paintLang();
     }
     var noteT = 0;
-    function micNote(msg) { clearTimeout(noteT); ta.placeholder = msg; noteT = setTimeout(function () { if (!listening) ta.placeholder = phDefault; }, 4500); }
+    function micNote(msg) {
+      var n = q('.vnote'); clearTimeout(noteT); n.textContent = msg; n.hidden = false;
+      noteT = setTimeout(function () { n.hidden = true; }, Math.max(6000, msg.length * 70));
+    }
+    var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    /* Vilket språk rösten lyssnar på. Webbläsarens taligenkänning kan bara ett språk åt gången, och webbläsarens eget språk
+       är ofta fel (en svensk med engelsk dator). Ordning: gästens eget val, språket gästen senast skrev på, chattens språk. */
+    var LANGNAME = { sv: 'Svenska', en: 'English', de: 'Deutsch', it: 'Italiano', es: 'Español', fr: 'Français', no: 'Norsk', da: 'Dansk', fi: 'Suomi', nl: 'Nederlands' };
+    var TAGS = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT' };
+    var vPick = null;
+    function voiceLangs() { return (C.voiceLangs && C.voiceLangs.length ? C.voiceLangs : ['sv-SE', 'en-GB', 'de-DE', 'it-IT', 'es-ES', 'fr-FR']); }
     function voiceLang() {
       if (C.voiceLang) return C.voiceLang;
-      var l = (navigator.language || 'sv-SE');
-      return /^sv/i.test(l) ? 'sv-SE' : l;
+      if (vPick) return vPick;
+      var g = lastUser ? guessLang(lastUser, 'xx') : '';
+      if (g && TAGS[g]) return TAGS[g];
+      var page = String(document.documentElement.lang || '').slice(0, 2).toLowerCase();
+      return TAGS[C.language] || TAGS[page] || 'sv-SE';
+    }
+    function paintLang() {
+      var b = q('.vl'); if (!b) return;
+      var tag = voiceLang(), code = tag.slice(0, 2).toLowerCase(), name = LANGNAME[code] || tag;
+      b.hidden = !voiceOK || !!C.voiceLang || voiceLangs().length < 2;
+      b.textContent = code.toUpperCase();
+      b.setAttribute('aria-label', 'Språk för rösten: ' + name); b.title = 'Språk för rösten: ' + name;
+    }
+    function nextLang() {
+      var list = voiceLangs(), cur = voiceLang(), i = -1;
+      list.forEach(function (t, k) { if (t.slice(0, 2).toLowerCase() === cur.slice(0, 2).toLowerCase()) i = k; });
+      vPick = list[(i + 1) % list.length]; store(id + ':vl', vPick); paintLang();
+      var name = LANGNAME[vPick.slice(0, 2).toLowerCase()] || vPick;
+      if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); setTimeout(listen, 150); }
+      else micNote('Rösten lyssnar nu på: ' + name);
     }
     function listen() {
       if (!voiceOK) return;
       if (speaking) { stopSpeak(); return; }
       if (listening) { try { rec.stop(); } catch (e) { setListening(false); } return; }
-      if (busy || inputLocked) return;
-      unlock();
+      if (busy || inputLocked || document.hidden) return;
       open(); hideTeaser();
       var heard = '';
       rec = new SR(); rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
@@ -1519,16 +1565,37 @@
         heard = fin; ta.value = (fin + ' ' + tmp).replace(/\s+/g, ' ').trim(); grow(); sync();
       };
       rec.onerror = function (e) {
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { setListening(false); micNote(T.micBlocked); }
-        else if (e.error === 'no-speech') { setListening(false); micNote(T.micNoSpeech); }
+        var er = e && e.error; if (er !== 'aborted') console.warn('[Smartsvar] Rösten:', er);
+        if (er === 'aborted') return;
+        setListening(false);
+        if (er === 'not-allowed') micNote(IOS ? T.micBlockedIOS : T.micBlocked);
+        else if (er === 'service-not-allowed') { micNote(IOS ? T.micDictation : T.micBlocked); if (IOS) ta.focus(); }
+        else if (er === 'no-speech') micNote(T.micNoSpeech);
+        else if (er === 'audio-capture') micNote(T.micNone);
+        else if (er === 'network') micNote(T.micNet);
+        else micNote(T.micOther);
       };
       rec.onend = function () {
+        clearTimeout(micT); rec = null;
         var was = listening; setListening(false);
         var t = ta.value.trim();
         if (was && t && heard.trim() && C.voiceAutoSend !== false) { viaVoice = true; send(t); }
       };
       ta.value = ''; grow();
-      try { rec.start(); setListening(true); } catch (e) { setListening(false); }
+      var vn = q('.vnote'); if (vn) vn.hidden = true;
+      try { rec.start(); setListening(true); } catch (e) { console.warn('[Smartsvar] Rösten:', e); setListening(false); micNote(T.micOther); }
+      clearTimeout(micT); var mine = rec;
+      micT = setTimeout(function () { if (rec === mine && listening) { try { rec.stop(); } catch (e) { hush(); } } }, num(C.voiceMaxListen, 20) * 1000);
+      unlock(); // ljudet för svaret låses upp efter att mikrofonen startat, så att de inte krockar på iPhone
+    }
+    /* Tystnad: stänger mikrofonen, rösten och ljudmotorn helt (då släcks även iPhonens blå mikrofonsymbol). */
+    var micT = 0;
+    function hush() {
+      clearTimeout(micT);
+      if (rec) { var r = rec; rec = null; try { r.onend = null; r.onresult = null; r.onerror = null; r.abort(); } catch (e) {} }
+      if (listening) setListening(false);
+      stopSpeak();
+      if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) {} }
     }
     function talkEl() {
       var b = el('button', 'talk'); b.type = 'button';
@@ -1705,7 +1772,7 @@
     scroll.addEventListener('scroll', function () { if (scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop < 4) stick = true; }, { passive: true });
     ta.oninput = function () { if (speaking) stopSpeak(); grow(); sync(); };
     ta.onkeydown = function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(ta.value); } };
-    q('.rs').onclick = reset; q('.x').onclick = close; micB.onclick = listen;
+    q('.rs').onclick = reset; q('.x').onclick = close; micB.onclick = listen; q('.vl').onclick = nextLang;
     q('.snd').onclick = function () { unlock(); speakOn = !speakOn; store(id + ':spk', speakOn ? '1' : null); paintSnd(); if (!speakOn) stopSpeak(); };
     if (TTS && TTS.getVoices) { TTS.getVoices(); if ('onvoiceschanged' in TTS) TTS.addEventListener('voiceschanged', function () {}); }
     if (launch) {
@@ -1727,6 +1794,10 @@
       if (a && (a.getAttribute('href') || '').indexOf('chat=open') >= 0) { e.preventDefault(); open(); }
     }
     document.addEventListener('keydown', onKey);
+    function onHide() { if (document.hidden) hush(); }
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', hush);
+    document.addEventListener('freeze', hush);
     // Tangenttryck inne i chatten stannar i chatten. Sajtens egna skript (till exempel mjuk rullning) tar annars mellanslag, piltangenter,
     // Home och End: de ser inte att besökaren skriver, eftersom skrivrutan ligger i chattens egen slutna ruta. Escape sköts därför här.
     ['keydown', 'keypress', 'keyup'].forEach(function (t) {
@@ -1774,6 +1845,7 @@
       destroy: function () {
         alive = false; lock(false); if (rec) { try { rec.abort(); } catch (e) {} } try { if (TTS) TTS.cancel(); } catch (e) {}
         document.removeEventListener('keydown', onKey); document.removeEventListener('click', onDocClick);
+        document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', hush); document.removeEventListener('freeze', hush); hush();
         if (ro) ro.disconnect(); else { window.removeEventListener('resize', measure); if (window.visualViewport) { visualViewport.removeEventListener('resize', measure); visualViewport.removeEventListener('scroll', measure); } }
         host.remove();
       }
@@ -1783,7 +1855,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.5.0', base: BASE, mount: mount,
+    __v: '4.8.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
