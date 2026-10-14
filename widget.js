@@ -24,7 +24,9 @@
     v4.7: rösten lyssnar på chattens språk (language) i stället för webbläsarens, byter till gästens språk när gästen skrivit
     på ett annat, och en språkknapp bredvid Prata låter gästen välja själv (voiceLangs styr vilka språk som finns).
     v4.8: mikrofonen och rösten stängs av helt när besökaren lämnar sidan, byter flik eller stänger chatten, och mikrofonen
-    stängs alltid efter högst 20 sekunder. Röstsamtalet lyssnar bara igen när sidan syns. */
+    stängs alltid efter högst 20 sekunder. Röstsamtalet lyssnar bara igen när sidan syns.
+    v4.9: vfOpening: false visar alltid öppningen från inställningarna och aldrig Voiceflows (en AI-agent skriver annars en ny,
+    slumpmässig öppning varje gång). Sessionen startas ändå i bakgrunden så att första svaret går lika snabbt. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -1394,7 +1396,8 @@
     function greet() {
       if (greeted) return; greeted = true;
       msgs.appendChild(introEl());
-      var h = heroEl(), known = C.demo ? null : lstore(id + ':welcome'); msgs.appendChild(h);
+      var own = C.vfOpening === false; if (own) lstore(id + ':welcome', null);
+      var h = heroEl(), known = C.demo || own ? null : lstore(id + ':welcome'); msgs.appendChild(h);
       // Har Voiceflow-flödet en egen öppning visas den direkt (den som minns från förra besöket), annars den som står i inställningarna.
       if (known) { h.dataset.vf = '1'; h.querySelector('.op').innerHTML = md(known); }
       if (!w.classList.contains('has') && suggestions().length) h.appendChild(startBox());
@@ -1402,7 +1405,7 @@
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
       // Voiceflow-flödets egen öppning ersätter den inställda så fort den kommer, så länge besökaren inte har skrivit något.
       if (!C.demo && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
-        if (!alive) return;
+        if (!alive || own) return; // egen fast öppning: Voiceflows öppning visas aldrig
         var vis = visible(blocks), txt = clean(textOfBlocks(vis));
         lstore(id + ':welcome', txt || null); // minns öppningen till nästa besök, tomt om flödet inte har någon
         if (w.classList.contains('has')) return;
@@ -1819,7 +1822,7 @@
         else if (m.r === 'day') addDay(m.text);
         else if (m.r === 'bot' && m.o) {
           var h = heroEl(), vb = visible(m.blocks); msgs.appendChild(h);
-          if (!(vb.length === 1 && vb[0].t === 'text' && clean(vb[0].text) === opening())) fillHero(h, vb);
+          if (C.vfOpening !== false && !(vb.length === 1 && vb[0].t === 'text' && clean(vb[0].text) === opening())) fillHero(h, vb);
         }
         else if (m.r === 'bot') renderBlocks(m.blocks || [{ t: 'text', text: m.text || '' }]);
       });
@@ -1855,7 +1858,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.8.0', base: BASE, mount: mount,
+    __v: '4.9.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
