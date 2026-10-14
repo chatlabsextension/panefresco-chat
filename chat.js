@@ -32,7 +32,9 @@ window.SMARTSVAR = {
 
   headline: 'Benvenuti!',
   tagline: '»Pasta först. Viktiga beslut sen.«',
-  opening: 'Fråga mig om menyn, öppettider, bordsbokning eller allergier. I answer in English too.',
+  opening: 'Jag är Panefrescos AI-assistent. Fråga mig om menyn, öppettider, bordsbokning eller allergier. I answer in English too.',
+  // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
+  vfOpening: false,
   suggestions: ['Boka bord', 'Vad finns på lunch?', 'Har ni glutenfritt?'],
   placeholder: 'Skriv er fråga…',
   launcherText: 'Fråga oss',
