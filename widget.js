@@ -26,7 +26,9 @@
     v4.8: mikrofonen och rösten stängs av helt när besökaren lämnar sidan, byter flik eller stänger chatten, och mikrofonen
     stängs alltid efter högst 20 sekunder. Röstsamtalet lyssnar bara igen när sidan syns.
     v4.9: vfOpening: false visar alltid öppningen från inställningarna och aldrig Voiceflows (en AI-agent skriver annars en ny,
-    slumpmässig öppning varje gång). Sessionen startas ändå i bakgrunden så att första svaret går lika snabbt. */
+    slumpmässig öppning varje gång). Sessionen startas ändå i bakgrunden så att första svaret går lika snabbt.
+    v5.0: actions: [{ label, url, when: [fraser] }]. Nämner svaret en av fraserna (till exempel "Boka bord") visas en knapp med
+    länken under svaret. Agenten behöver då aldrig skriva ut adressen, och rösten läser bara upp orden. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -549,6 +551,10 @@
   .card .cbtn:hover{background:var(--chip2)}
   .card .cbtn.first{background:var(--a);color:var(--on-a)}
   .card .cbtn.first:hover{filter:brightness(.95)}
+  .cta{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;min-height:42px;padding:10px 16px 10px 18px;border-radius:var(--r3);
+    background:var(--a);color:var(--on-a);font-size:15px;font-weight:600;text-decoration:none;box-shadow:0 6px 16px -8px var(--ash);transition:transform .15s,filter .15s}
+  .cta:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .cta:active{transform:scale(.98)}
   .carw{position:relative}
   .car{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:1px 1px 6px}
   .car::-webkit-scrollbar{display:none}
@@ -925,6 +931,7 @@
       if (b.t === 'img') { var p = el('div', 'pic'), im = el('img'); im.src = b.src; im.alt = ''; im.loading = 'lazy'; p.appendChild(im); node.appendChild(p); }
       else if (b.t === 'card') node.appendChild(cardEl(b.card));
       else if (b.t === 'car') node.appendChild(carouselEl(b.cards));
+      else if (b.t === 'cta') { var a = el('a', 'cta'); a.href = b.url; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<span></span>' + svg(UI.go, 16); a.firstChild.textContent = b.label; node.appendChild(a); }
       else return null;
       return node;
     }
@@ -1392,6 +1399,18 @@
     /* ---------- Öppning, skicka, börja om ---------- */
     var greeted = false;
     function visible(blocks) { return (blocks || []).filter(function (b) { return b.t !== 'text' || showText(b.text); }); }
+    /* Knappar som widgeten själv lägger under ett svar (actions i inställningarna). Första frasen som finns i svaret vinner,
+       och knappen visas inte om svaret redan länkar till samma adress. */
+    function actionFor(text) {
+      var t = String(text || '').toLowerCase(), list = C.actions || [];
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i]; if (!a || !a.url || !a.label) continue;
+        if (t.indexOf(String(a.url).toLowerCase()) >= 0) continue;
+        var hit = (a.when || [a.label]).some(function (w) { return w && t.indexOf(String(w).toLowerCase()) >= 0; });
+        if (hit) return { t: 'cta', label: a.label, url: a.url };
+      }
+      return null;
+    }
     function textOfBlocks(blocks) { return blocks.filter(function (b) { return b.t === 'text'; }).map(function (b) { return b.text; }).join('\n\n'); }
     function greet() {
       if (greeted) return; greeted = true;
@@ -1442,6 +1461,7 @@
       var tA = wantVoice && audioOK() && !C.demo ? (turnAudio = newTurn(again, byVoice ? null : rp.ready)) : null;
       answer(action, rp).then(function () {
         if (!alive) return;
+        var cta = actionFor(textOfBlocks(rp.blocks)); if (cta) rp.block(cta);
         var done = rp.finish(), vis = visible(rp.blocks);
         if (!vis.length) throw new Error('Tomt svar från Voiceflow');
         log.push({ r: 'bot', blocks: vis }); save();
@@ -1858,7 +1878,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '4.9.0', base: BASE, mount: mount,
+    __v: '5.0.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
