@@ -35,6 +35,15 @@ window.SMARTSVAR = {
   opening: 'Jag är Panefrescos AI-assistent. Fråga mig om menyn, öppettider, bordsbokning eller allergier. I answer in English too.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
   vfOpening: false,
+
+  // Knappar som visas under ett svar när svaret nämner frasen. Agenten skriver bara orden, aldrig adressen,
+  // så att rösten inte läser upp länken.
+  actions: [
+    { label: 'Book a table', url: 'https://widget.thefork.com/en/187d6cbd-f941-4c0f-b100-8563b1ef905a?step=date&utm_source=panefresco.se',
+      when: ['book a table', 'reserve a table', 'tisch reservieren', 'prenota un tavolo', 'prenotare un tavolo', 'reservar una mesa', 'réserver une table'] },
+    { label: 'Boka bord', url: 'https://widget.thefork.com/sv/187d6cbd-f941-4c0f-b100-8563b1ef905a?utm_source=panefresco.se',
+      when: ['boka bord', 'bokar bord', 'boka ett bord', 'bordsbokning'] }
+  ],
   suggestions: ['Boka bord', 'Vad finns på lunch?', 'Har ni glutenfritt?'],
   placeholder: 'Skriv er fråga…',
   launcherText: 'Fråga oss',
