@@ -42,11 +42,12 @@
   textarea:focus-visible{outline:none}
   svg,img{display:block}[hidden]{display:none!important}
 
-  .panel{position:fixed;z-index:3;right:24px;bottom:98px;width:min(400px,calc(100vw - 32px));height:auto;max-height:min(760px,calc(100vh - 124px));display:flex;flex-direction:column;overflow:hidden;border-radius:28px;
+  .panel{position:fixed;z-index:3;right:24px;bottom:98px;width:min(400px,calc(100vw - 32px));height:auto;max-height:calc(100vh - 124px);display:flex;flex-direction:column;overflow:hidden;border-radius:28px;
     background:linear-gradient(180deg,#FFFFFF 0%,#F4F8FD 100%);box-shadow:0 0 0 1px rgba(10,44,106,.07),0 2px 4px rgba(10,44,106,.04),0 40px 90px -36px rgba(10,44,106,.55);
     opacity:0;visibility:hidden;transform:translateY(14px) scale(.98);transform-origin:100% 100%;transition:opacity .22s,transform .32s var(--ease),visibility 0s .32s}
-  .w.open .panel{opacity:1;visibility:visible;transform:none;transition:opacity .22s,transform .32s var(--ease)}
-  .w[data-m=mobile] .panel{right:0;left:0;bottom:0;width:auto;max-height:calc(100dvh - 14px);border-radius:28px 28px 0 0;transform:translateY(100%);transition:transform .38s var(--ease),visibility 0s .38s}
+  .w.open .panel{opacity:1;visibility:visible;transform:none;transition:opacity .22s,transform .32s var(--ease),height .5s var(--ease)}
+  .w.has .msgs{justify-content:flex-start}
+  .w[data-m=mobile] .panel{right:0;left:0;bottom:0;width:auto;height:calc(100dvh - 14px)!important;max-height:none;border-radius:28px 28px 0 0;transform:translateY(100%);transition:transform .38s var(--ease),visibility 0s .38s}
   .w[data-m=mobile].open .panel{transform:none;transition:transform .42s var(--ease)}
   .scrim{display:none}
   .w[data-m=mobile] .scrim{display:block;position:fixed;inset:0;z-index:3;background:rgba(10,12,14,.38);opacity:0;pointer-events:none;transition:opacity .3s}
@@ -205,7 +206,8 @@
     var busy = false, isOpen = false, lang = 'sv', timers = [];
     function later(fn, ms) { var t = setTimeout(fn, ms); timers.push(t); return t; }
     function pin() { scroll.scrollTop = scroll.scrollHeight; }
-    function measure() { w.dataset.m = innerWidth <= 600 ? 'mobile' : 'desktop'; }
+    var panel = q('.panel'), H = 600; // chattfönstrets höjd när samtalet har börjat
+    function measure() { w.dataset.m = innerWidth <= 600 ? 'mobile' : 'desktop'; if (w.classList.contains('has')) panel.style.height = Math.min(H, innerHeight - 124) + 'px'; }
     measure(); addEventListener('resize', measure);
 
     function chips(list) {
@@ -237,8 +239,12 @@
       if (!text || busy) return;
       open(); hideTeaser();
       [].forEach.call(msgs.querySelectorAll('.chips,.cta'), function (n) { n.remove(); });
-      if (!w.classList.contains('has')) msgs.appendChild(el('div', 'day', stamp()));
-      w.classList.add('has');
+      if (!w.classList.contains('has')) {
+        msgs.appendChild(el('div', 'day', stamp()));
+        // Hälsningskortet blir ett chattfönster: höjden växer en gång till H och ligger sedan still.
+        panel.style.height = panel.offsetHeight + 'px'; void panel.offsetHeight;
+        w.classList.add('has'); measure();
+      }
       lang = /\b(the|what|when|where|how|tickets?|hello|hi|is|are|do|can)\b/i.test(text) && !/[åäö]/i.test(text) ? 'en' : 'sv';
       var me = el('div', 'me'); me.textContent = text; msgs.appendChild(me);
       ta.value = ''; grow(); busy = true; sync();
@@ -258,7 +264,7 @@
         }, 240);
       }, reduce ? 600 : 1900 + Math.random() * 600);
     }
-    function reset() { timers.forEach(clearTimeout); timers = []; busy = false; lang = 'sv'; msgs.innerHTML = ''; w.classList.remove('has'); greet(); sync(); }
+    function reset() { timers.forEach(clearTimeout); timers = []; busy = false; lang = 'sv'; msgs.innerHTML = ''; w.classList.remove('has'); panel.style.height = ''; greet(); sync(); }
     function sync() { sendB.disabled = busy || !ta.value.trim(); }
     function grow() { ta.style.height = '42px'; ta.style.height = Math.min(124, ta.scrollHeight) + 'px'; }
     function hideTeaser() { teaser.hidden = true; }
