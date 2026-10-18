@@ -42,13 +42,11 @@
   textarea:focus-visible{outline:none}
   svg,img{display:block}[hidden]{display:none!important}
 
-  .panel{position:fixed;z-index:3;right:24px;bottom:98px;width:min(400px,calc(100vw - 32px));height:min(760px,calc(100vh - 124px));display:flex;flex-direction:column;overflow:hidden;border-radius:28px;
+  .panel{position:fixed;z-index:3;right:24px;bottom:98px;width:min(400px,calc(100vw - 32px));height:auto;max-height:min(760px,calc(100vh - 124px));display:flex;flex-direction:column;overflow:hidden;border-radius:28px;
     background:linear-gradient(180deg,#FFFFFF 0%,#F4F8FD 100%);box-shadow:0 0 0 1px rgba(10,44,106,.07),0 2px 4px rgba(10,44,106,.04),0 40px 90px -36px rgba(10,44,106,.55);
     opacity:0;visibility:hidden;transform:translateY(14px) scale(.98);transform-origin:100% 100%;transition:opacity .22s,transform .32s var(--ease),visibility 0s .32s}
   .w.open .panel{opacity:1;visibility:visible;transform:none;transition:opacity .22s,transform .32s var(--ease)}
-  .w:not(.has) .panel{height:auto;max-height:min(760px,calc(100vh - 124px))}
-  .w[data-m=mobile]:not(.has) .panel{height:auto;max-height:calc(100dvh - 14px)}
-  .w[data-m=mobile] .panel{right:0;left:0;bottom:0;width:auto;height:calc(100% - 14px);height:calc(100dvh - 14px);border-radius:28px 28px 0 0;transform:translateY(100%);transition:transform .38s var(--ease),visibility 0s .38s}
+  .w[data-m=mobile] .panel{right:0;left:0;bottom:0;width:auto;max-height:calc(100dvh - 14px);border-radius:28px 28px 0 0;transform:translateY(100%);transition:transform .38s var(--ease),visibility 0s .38s}
   .w[data-m=mobile].open .panel{transform:none;transition:transform .42s var(--ease)}
   .scrim{display:none}
   .w[data-m=mobile] .scrim{display:block;position:fixed;inset:0;z-index:3;background:rgba(10,12,14,.38);opacity:0;pointer-events:none;transition:opacity .3s}
