@@ -28,7 +28,9 @@
     v4.9: vfOpening: false visar alltid öppningen från inställningarna och aldrig Voiceflows (en AI-agent skriver annars en ny,
     slumpmässig öppning varje gång). Sessionen startas ändå i bakgrunden så att första svaret går lika snabbt.
     v5.0: actions: [{ label, url, when: [fraser] }]. Nämner svaret en av fraserna (till exempel "Boka bord") visas en knapp med
-    länken under svaret. Agenten behöver då aldrig skriva ut adressen, och rösten läser bara upp orden. */
+    länken under svaret. Agenten behöver då aldrig skriva ut adressen, och rösten läser bara upp orden.
+    v5.1: vägrar iPhone röstigenkänning provas nästa tryck utan språkval (telefonens eget dikteringsspråk), och hjälptexten
+    nämner Siri, dikteringsspråk och Skärmtid. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -405,7 +407,8 @@
     speaking: 'Stoppa', readOn: 'Läs upp svaren', readOff: 'Sluta läsa upp svaren',
     micBlocked: 'Mikrofonen är blockerad. Tillåt den för den här sidan i webbläsaren och försök igen, eller skriv er fråga.',
     micBlockedIOS: 'Mikrofonen är blockerad. Gå till Inställningar → Safari → Mikrofon och välj Tillåt (i Chrome: Inställningar → Chrome → Mikrofon), ladda om sidan och försök igen.',
-    micDictation: 'Röst kräver att diktering är på i telefonen: Inställningar → Allmänt → Tangentbord → Diktering. Ni kan också trycka på mikrofonen på tangentbordet.',
+    micRetry: 'Rösten kunde inte starta. Tryck på Prata en gång till.',
+    micDictation: 'Telefonen tillåter inte röst på webbsidor just nu. Kolla att Siri är på (Inställningar → Siri), att Svenska finns under Inställningar → Allmänt → Tangentbord → Dikteringsspråk, och att Siri och diktering inte är spärrat i Skärmtid. Tills dess går det bra att trycka på mikrofonen på tangentbordet.',
     micNone: 'Hittar ingen mikrofon. Kontrollera att ingen annan app använder den och försök igen.',
     micNet: 'Röstigenkänningen svarar inte just nu. Försök igen om en stund, eller skriv er fråga.',
     micOther: 'Rösten gick inte att starta i den här webbläsaren. Skriv gärna er fråga i stället.',
@@ -1544,6 +1547,7 @@
       var n = q('.vnote'); clearTimeout(noteT); n.textContent = msg; n.hidden = false;
       noteT = setTimeout(function () { n.hidden = true; }, Math.max(6000, msg.length * 70));
     }
+    var noLang = store(id + ':nolang') === '1';
     var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     /* Vilket språk rösten lyssnar på. Webbläsarens taligenkänning kan bara ett språk åt gången, och webbläsarens eget språk
        är ofta fel (en svensk med engelsk dator). Ordning: gästens eget val, språket gästen senast skrev på, chattens språk. */
@@ -1581,7 +1585,7 @@
       if (busy || inputLocked || document.hidden) return;
       open(); hideTeaser();
       var heard = '';
-      rec = new SR(); rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+      rec = new SR(); if (!noLang) rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
       rec.onresult = function (e) {
         var fin = '', tmp = '';
         for (var i = 0; i < e.results.length; i++) { var r = e.results[i]; if (r.isFinal) fin += r[0].transcript; else tmp += r[0].transcript; }
@@ -1592,7 +1596,11 @@
         if (er === 'aborted') return;
         setListening(false);
         if (er === 'not-allowed') micNote(IOS ? T.micBlockedIOS : T.micBlocked);
-        else if (er === 'service-not-allowed') { micNote(IOS ? T.micDictation : T.micBlocked); if (IOS) ta.focus(); }
+        else if (er === 'service-not-allowed') {
+          // iPhone: ofta saknas det valda språket bland telefonens dikteringsspråk. Nästa tryck provar telefonens eget språk.
+          if (IOS && !noLang) { noLang = true; store(id + ':nolang', '1'); micNote(T.micRetry); }
+          else { micNote(IOS ? T.micDictation : T.micBlocked); if (IOS) ta.focus(); }
+        }
         else if (er === 'no-speech') micNote(T.micNoSpeech);
         else if (er === 'audio-capture') micNote(T.micNone);
         else if (er === 'network') micNote(T.micNet);
@@ -1878,7 +1886,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '5.0.0', base: BASE, mount: mount,
+    __v: '5.1.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
