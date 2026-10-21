@@ -60,6 +60,9 @@ window.SMARTSVAR = {
   texts: { ai: 'AI-assistent', input: 'Skriv er fråga' },
 
   thinking: 'oven',
+  // Hur länge pizzan minst är i ugnen och hur länge den ligger på fatet innan svaret visas (millisekunder). Kortare = snabbare svar.
+  ovenMin: 500,
+  ovenHold: 650,
 
   // Detaljerna från menyn: krämvitt papper, citronglöd och citat i kursiv orange.
   css: [
