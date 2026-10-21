@@ -1068,7 +1068,7 @@
         lane(function () {
           var art = row.querySelector('.ov'), box = row.querySelector('.ov-row');
           if (!art || !row.isConnected) return null;
-          return sleep(Math.max(0, 900 - (Date.now() - t0))).then(function () {
+          return sleep(Math.max(0, (C.ovenMin == null ? 900 : num(C.ovenMin, 900)) - (Date.now() - t0))).then(function () {
             if (!row.isConnected || !row.querySelector('.ov')) return null;
             art.classList.add('out');
             var sh = row.querySelector('.shim'); if (sh) sh.textContent = clean(T.ovenDone) || OVEN_DONE;
