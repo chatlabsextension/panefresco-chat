@@ -30,7 +30,12 @@
     v5.0: actions: [{ label, url, when: [fraser] }]. Nämner svaret en av fraserna (till exempel "Boka bord") visas en knapp med
     länken under svaret. Agenten behöver då aldrig skriva ut adressen, och rösten läser bara upp orden.
     v5.1: vägrar iPhone röstigenkänning provas nästa tryck utan språkval (telefonens eget dikteringsspråk), och hjälptexten
-    nämner Siri, dikteringsspråk och Skärmtid. */
+    nämner Siri, dikteringsspråk och Skärmtid.
+    v5.2: går röst via knappen inte alls på en iPhone byter Prata till tangentbordsläge: knappen öppnar tangentbordet,
+    uppläsningen slås på, och gästen pratar in frågan med tangentbordets mikrofon och får svaret uppläst.
+    v5.3: svaret hörs även när iPhonen står på ljudlös. Rösten spelas via ljudmotorn (Web Audio), och den tystas av
+    ljudlös-knappen om inte ljudsessionen sätts till uppspelning (navigator.audioSession, iOS 17+). Det görs nu vid varje
+    tryck på Prata, högtalaren eller Skicka, bara när rösten är på. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -408,6 +413,7 @@
     micBlocked: 'Mikrofonen är blockerad. Tillåt den för den här sidan i webbläsaren och försök igen, eller skriv er fråga.',
     micBlockedIOS: 'Mikrofonen är blockerad. Gå till Inställningar → Safari → Mikrofon och välj Tillåt (i Chrome: Inställningar → Chrome → Mikrofon), ladda om sidan och försök igen.',
     micRetry: 'Rösten kunde inte starta. Tryck på Prata en gång till.',
+    micKeyboard: 'Tryck på mikrofonen nere till höger på tangentbordet och prata in er fråga. Jag läser upp svaret.',
     micDictation: 'Telefonen tillåter inte röst på webbsidor just nu. Kolla att Siri är på (Inställningar → Siri), att Svenska finns under Inställningar → Allmänt → Tangentbord → Dikteringsspråk, och att Siri och diktering inte är spärrat i Skärmtid. Tills dess går det bra att trycka på mikrofonen på tangentbordet.',
     micNone: 'Hittar ingen mikrofon. Kontrollera att ingen annan app använder den och försök igen.',
     micNet: 'Röstigenkänningen svarar inte just nu. Försök igen om en stund, eller skriv er fråga.',
@@ -1547,7 +1553,13 @@
       var n = q('.vnote'); clearTimeout(noteT); n.textContent = msg; n.hidden = false;
       noteT = setTimeout(function () { n.hidden = true; }, Math.max(6000, msg.length * 70));
     }
-    var noLang = store(id + ':nolang') === '1';
+    var noLang = store(id + ':nolang') === '1', kbdVoice = store(id + ':kbd') === '1';
+    // Tangentbordsläge (iPhone där webbsidor inte får använda röstigenkänning): uppläsning på, tangentbordet öppnas.
+    function keyboardVoice() {
+      kbdVoice = true; store(id + ':kbd', '1');
+      if (canSpeak() && !speakOn) { speakOn = true; store(id + ':spk', '1'); paintSnd(); }
+      unlock(); open(); ta.focus(); micNote(T.micKeyboard);
+    }
     var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     /* Vilket språk rösten lyssnar på. Webbläsarens taligenkänning kan bara ett språk åt gången, och webbläsarens eget språk
        är ofta fel (en svensk med engelsk dator). Ordning: gästens eget val, språket gästen senast skrev på, chattens språk. */
@@ -1583,6 +1595,7 @@
       if (speaking) { stopSpeak(); return; }
       if (listening) { try { rec.stop(); } catch (e) { setListening(false); } return; }
       if (busy || inputLocked || document.hidden) return;
+      if (kbdVoice) { keyboardVoice(); return; }
       open(); hideTeaser();
       var heard = '';
       rec = new SR(); if (!noLang) rec.lang = voiceLang(); rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
@@ -1599,7 +1612,8 @@
         else if (er === 'service-not-allowed') {
           // iPhone: ofta saknas det valda språket bland telefonens dikteringsspråk. Nästa tryck provar telefonens eget språk.
           if (IOS && !noLang) { noLang = true; store(id + ':nolang', '1'); micNote(T.micRetry); }
-          else { micNote(IOS ? T.micDictation : T.micBlocked); if (IOS) ta.focus(); }
+          else if (IOS) keyboardVoice();
+          else micNote(T.micBlocked);
         }
         else if (er === 'no-speech') micNote(T.micNoSpeech);
         else if (er === 'audio-capture') micNote(T.micNone);
@@ -1643,7 +1657,11 @@
     function canSpeak() { return audioOK() || browserOK(); }
     // Ljud får bara starta efter ett tryck (särskilt på iPhone). Ljudmotorn startas därför vid varje tryck på Prata, högtalaren eller Skicka.
     function unlock() {
-      if (audioOK()) { try { actx = actx || new AC(); if (actx.state === 'suspended') actx.resume(); } catch (e) {} }
+      if (audioOK()) {
+        // iPhone: Web Audio tystas av ljudlös-knappen tills ljudsessionen är satt till uppspelning. Måste ske i ett tryck.
+        try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
+        try { actx = actx || new AC(); if (actx.state === 'suspended') actx.resume(); } catch (e) {}
+      }
       if (!unlocked && browserOK() && engine() === 'browser') { unlocked = true; try { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; TTS.speak(u); } catch (e) {} }
     }
 
@@ -1729,6 +1747,7 @@
       return new Promise(function (ok, fail) { var r = actx.decodeAudioData(ab, ok, fail); if (r && r.then) r.then(ok, fail); });
     }
     function play(buf, t) {
+      try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
       if (actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
       var src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
       var at = Math.max(actx.currentTime + 0.05, playAt); src.start(at); playAt = at + buf.duration;
@@ -1886,7 +1905,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '5.1.0', base: BASE, mount: mount,
+    __v: '5.3.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
