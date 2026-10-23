@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rösttest – Smartsvar</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 16px 48px; font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #14170f; background: #f6f7f3; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  p { margin: 0 0 14px; color: #40463a; }
+  .step { background: #fff; border: 1px solid #e8ebe3; border-radius: 18px; padding: 16px; margin: 0 0 14px; }
+  .step h2 { font-size: 18px; margin: 0 0 4px; }
+  .step .why { font-size: 15px; color: #737a6c; margin: 0 0 12px; }
+  button { appearance: none; border: 0; border-radius: 14px; background: #2747A0; color: #fff; font: 600 17px/1 inherit; padding: 16px 18px; width: 100%; margin: 6px 0; }
+  button.sec { background: #eef2fb; color: #2747A0; }
+  button:disabled { opacity: .5; }
+  .res { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: #f6f7f3; font-size: 15px; white-space: pre-wrap; word-break: break-word; min-height: 20px; }
+  .ok { background: #e8f8d8; } .bad { background: #fde3e3; } .warn { background: #fff4d6; }
+  .sum { background: #14170f; color: #fff; border-radius: 18px; padding: 16px; }
+  .sum pre { font: 13px/1.4 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; margin: 0 0 12px; max-height: 260px; overflow: auto; }
+  .sum button { background: #8fe400; color: #101a00; }
+  .sum button.sec { background: #333; color: #fff; }
+  .big { font-size: 20px; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>Rösttest för chatten</h1>
+<p>Det här tar en minut. Tryck på knapparna uppifrån och ned och svara på frågorna. Tryck sist på <b>Skicka resultatet</b>, så får vi exakt vad din telefon säger.</p>
+
+<div class="step">
+  <h2>0. Din telefon</h2>
+  <div class="why">Fylls i automatiskt.</div>
+  <div class="res" id="r0">Läser av…</div>
+</div>
+
+<div class="step">
+  <h2>1. Mikrofon</h2>
+  <div class="why">Får sidan spela in ljud? Tryck <b>Tillåt</b> om telefonen frågar. Säg något i 3 sekunder.</div>
+  <button id="b1">Testa mikrofonen</button>
+  <div class="res" id="r1"></div>
+</div>
+
+<div class="step">
+  <h2>2. Röstigenkänning</h2>
+  <div class="why">Det här är det Prata-knappen i chatten använder. Säg "Har ni öppet på söndag" när det står Lyssnar.</div>
+  <button id="b2">Testa röstigenkänning (svenska)</button>
+  <button id="b2b" class="sec">Testa igen utan språkval</button>
+  <div class="res" id="r2"></div>
+</div>
+
+<div class="step">
+  <h2>3. Ljud</h2>
+  <div class="why">Spelar två korta toner på två olika sätt. Lyssna noga, även om telefonen står på ljudlös.</div>
+  <button id="b3">Spela tonerna</button>
+  <div class="res" id="r3"></div>
+  <div id="q3" hidden>
+    <div class="big" style="margin:10px 0 6px">Hur många toner hörde du?</div>
+    <button class="sec a3" data-v="0">Ingen</button>
+    <button class="sec a3" data-v="1">En</button>
+    <button class="sec a3" data-v="2">Två</button>
+    <div class="big" style="margin:14px 0 6px">Står telefonen på ljudlös (knappen på sidan)?</div>
+    <button class="sec a4" data-v="ja">Ja, ljudlös</button>
+    <button class="sec a4" data-v="nej">Nej, ljud på</button>
+  </div>
+</div>
+
+<div class="sum">
+  <div class="big" style="margin-bottom:8px">Resultat</div>
+  <pre id="log"></pre>
+  <button id="send">Skicka resultatet till Smartsvar</button>
+  <button id="copy" class="sec">Kopiera resultatet</button>
+</div>
+
+<script>
+(function () {
+  var L = [];
+  function log(k, v) { L.push(k + ': ' + v); document.getElementById('log').textContent = L.join('\n'); }
+  function set(id, txt, cls) { var e = document.getElementById(id); e.textContent = txt; e.className = 'res' + (cls ? ' ' + cls : ''); }
+  var ua = navigator.userAgent;
+  var ios = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var ver = (ua.match(/OS (\d+)[._](\d+)(?:[._](\d+))?/) || []).slice(1).filter(Boolean).join('.');
+  var inApp = /FBAN|FBAV|Instagram|Line\/|Snapchat|LinkedInApp|GSA\/|Twitter|Outlook-iOS|MicroMessenger/i.test(ua) || (ios && !/Safari\//.test(ua));
+  var browser = /CriOS/.test(ua) ? 'Chrome' : /FxiOS/.test(ua) ? 'Firefox' : /EdgiOS/.test(ua) ? 'Edge' : (ios && /Safari\//.test(ua) && !inApp) ? 'Safari' : inApp ? 'inbyggd webbläsare i en app' : 'okänd';
+  var standalone = !!(navigator.standalone);
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var mr = window.MediaRecorder, mimes = [];
+  if (mr && mr.isTypeSupported) ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/wav'].forEach(function (m) { if (mr.isTypeSupported(m)) mimes.push(m); });
+  var info = [
+    (ios ? 'iPhone/iPad, iOS ' + (ver || '?') : 'Inte iPhone') + ' · ' + browser + (standalone ? ' (hemskärm)' : ''),
+    'Röstigenkänning finns: ' + (SR ? 'ja' : 'NEJ'),
+    'Ljudsession (iOS 17+): ' + (navigator.audioSession ? 'ja, typ=' + navigator.audioSession.type : 'nej'),
+    'Inspelning: ' + (mr ? (mimes.length ? mimes.join(', ') : 'ja') : 'NEJ'),
+    'Mikrofon-API: ' + (navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? 'ja' : 'NEJ'),
+    'Språk: ' + navigator.language + ' · Skärm: ' + screen.width + 'x' + screen.height
+  ].join('\n');
+  set('r0', info);
+  log('tid', new Date().toISOString());
+  log('telefon', info.replace(/\n/g, ' | '));
+  log('ua', ua);
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'microphone' }).then(function (p) { log('mikrofon-tillstånd', p.state); }, function () {});
+  }
+
+  // 1. Mikrofon
+  document.getElementById('b1').onclick = function () {
+    var b = this; b.disabled = true; set('r1', 'Startar mikrofonen…');
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { set('r1', 'Den här webbläsaren saknar mikrofon-API.', 'bad'); log('1 mikrofon', 'saknar getUserMedia'); b.disabled = false; return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var tr = stream.getAudioTracks()[0];
+      var txt = 'Mikrofonen gick att öppna (' + (tr && tr.label || 'mikrofon') + ').';
+      var level = 0, ctx = null;
+      try {
+        ctx = new AC(); var src = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an);
+        var buf = new Uint8Array(an.frequencyBinCount), t0 = Date.now();
+        (function tick() {
+          an.getByteTimeDomainData(buf); for (var i = 0; i < buf.length; i++) level = Math.max(level, Math.abs(buf[i] - 128));
+          set('r1', txt + '\nSpelar in 3 sekunder, prata nu… nivå ' + level);
+          if (Date.now() - t0 < 3000) requestAnimationFrame(tick); else finish();
+        })();
+      } catch (e) { setTimeout(finish, 3000); }
+      var rec = null, chunks = [];
+      try { rec = new MediaRecorder(stream, mimes.length ? { mimeType: mimes[0] } : undefined); rec.ondataavailable = function (e) { chunks.push(e.data); }; rec.start(); } catch (e) { log('1 inspelning', 'MediaRecorder fel: ' + e.name); }
+      function finish() {
+        var done = function () {
+          stream.getTracks().forEach(function (t) { t.stop(); }); if (ctx) try { ctx.close(); } catch (e) {}
+          var size = chunks.reduce(function (s, c) { return s + c.size; }, 0);
+          var heard = level > 6;
+          set('r1', txt + '\n' + (heard ? 'Ljud hördes (nivå ' + level + ').' : 'Inget ljud fångades (nivå ' + level + ').') + (rec ? ' Inspelning: ' + size + ' byte' + (rec.mimeType ? ' ' + rec.mimeType : '') : ''), heard ? 'ok' : 'warn');
+          log('1 mikrofon', 'OK, nivå ' + level + (rec ? ', inspelning ' + size + ' byte ' + rec.mimeType : ', ingen MediaRecorder'));
+          b.disabled = false;
+        };
+        if (rec && rec.state !== 'inactive') { rec.onstop = done; rec.stop(); } else done();
+      }
+    }, function (err) {
+      set('r1', 'Mikrofonen gick INTE att öppna: ' + err.name + (err.message ? ' – ' + err.message : ''), 'bad');
+      log('1 mikrofon', 'FEL ' + err.name + ' ' + (err.message || '')); b.disabled = false;
+    });
+  };
+
+  // 2. Röstigenkänning
+  function srTest(withLang) {
+    var id = 'r2', ev = [];
+    if (!SR) { set(id, 'Röstigenkänning finns inte i den här webbläsaren.', 'bad'); log('2 röst', 'saknas'); return; }
+    var r = new SR(); if (withLang) r.lang = 'sv-SE'; r.interimResults = true; r.continuous = false;
+    var got = '', t0 = Date.now(), ended = false;
+    function st(msg, cls) { set(id, (withLang ? 'Med sv-SE: ' : 'Utan språkval: ') + msg + (ev.length ? '\nhändelser: ' + ev.join(' › ') : ''), cls); }
+    ['start', 'audiostart', 'soundstart', 'speechstart', 'speechend', 'soundend', 'audioend'].forEach(function (n) { r['on' + n] = function () { ev.push(n); st('Lyssnar… säg er fråga.'); }; });
+    r.onresult = function (e) { var s = ''; for (var i = 0; i < e.results.length; i++) s += e.results[i][0].transcript; got = s; ev.push('result'); st('Hörde: "' + s + '"'); };
+    r.onerror = function (e) { ev.push('error=' + e.error); ended = true; st('FEL: ' + e.error + (e.message ? ' – ' + e.message : ''), 'bad'); log('2 röst ' + (withLang ? 'sv-SE' : 'utan lang'), 'FEL ' + e.error + ' efter ' + (Date.now() - t0) + ' ms, händelser ' + ev.join('>')); };
+    r.onend = function () { ev.push('end'); if (ended) return; ended = true; if (got) { st('Klart. Hörde: "' + got + '"', 'ok'); log('2 röst ' + (withLang ? 'sv-SE' : 'utan lang'), 'OK "' + got + '"'); } else { st('Avslutades utan att höra något.', 'warn'); log('2 röst ' + (withLang ? 'sv-SE' : 'utan lang'), 'slut utan resultat, händelser ' + ev.join('>')); } };
+    try { r.start(); st('Startar…'); } catch (e) { st('Gick inte att starta: ' + e.name + ' ' + e.message, 'bad'); log('2 röst', 'start-fel ' + e.name + ' ' + e.message); }
+    setTimeout(function () { if (!ended) try { r.stop(); } catch (e) {} }, 8000);
+  }
+  document.getElementById('b2').onclick = function () { srTest(true); };
+  document.getElementById('b2b').onclick = function () { srTest(false); };
+
+  // 3. Ljud: Web Audio (som chatten på iPhone) och <audio>-element
+  function wavTone(freq, secs) {
+    var rate = 22050, n = Math.floor(rate * secs), buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function s(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+    s(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); s(8, 'WAVE'); s(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); s(36, 'data'); v.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) { var env = Math.min(1, i / 400, (n - i) / 400); v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * freq * i / rate) * 12000 * env, true); }
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+  var ctx3 = null, el3 = null;
+  document.getElementById('b3').onclick = function () {
+    var b = this; b.disabled = true; document.getElementById('q3').hidden = true;
+    var notes = [];
+    try { if (navigator.audioSession) { navigator.audioSession.type = 'playback'; notes.push('ljudsession satt till playback'); } } catch (e) { notes.push('kunde inte sätta ljudsession: ' + e.message); }
+    // Ton 1: Web Audio (så spelas chattens röst på iPhone i dag)
+    try {
+      ctx3 = ctx3 || new AC(); if (ctx3.state === 'suspended') ctx3.resume();
+      var o = ctx3.createOscillator(), g = ctx3.createGain(); o.type = 'sine'; o.frequency.value = 660; g.gain.value = 0.25; o.connect(g); g.connect(ctx3.destination);
+      o.start(); o.stop(ctx3.currentTime + 0.7); notes.push('ton 1 (Web Audio) startad, state=' + ctx3.state);
+    } catch (e) { notes.push('ton 1 fel: ' + e.message); }
+    set('r3', 'Spelar ton 1 (hög)…');
+    // Ton 2: vanligt <audio>-element
+    setTimeout(function () {
+      try {
+        el3 = el3 || new Audio(); el3.setAttribute('playsinline', ''); el3.src = URL.createObjectURL(wavTone(440, 0.7));
+        var p = el3.play(); set('r3', 'Spelar ton 2 (låg)…');
+        if (p && p.then) p.then(function () { notes.push('ton 2 (<audio>) spelades'); done(); }, function (e) { notes.push('ton 2 fel: ' + e.name); done(); }); else done();
+      } catch (e) { notes.push('ton 2 fel: ' + e.message); done(); }
+    }, 1200);
+    function done() {
+      setTimeout(function () {
+        set('r3', 'Klart. ' + notes.join('. ') + '.');
+        log('3 ljud', notes.join('; '));
+        document.getElementById('q3').hidden = false; b.disabled = false;
+      }, 900);
+    }
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('.a3'), function (x) { x.onclick = function () { log('3 hörde toner', this.getAttribute('data-v')); set('r3', 'Tack! Svar: ' + this.textContent + ' ton(er).', 'ok'); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('.a4'), function (x) { x.onclick = function () { log('3 ljudlös-knapp', this.getAttribute('data-v')); }; });
+
+  // Skicka
+  document.getElementById('send').onclick = function () {
+    var body = 'Hej! Här är resultatet från rösttestet:\n\n' + L.join('\n');
+    location.href = 'mailto:david@smartsvar.se?subject=' + encodeURIComponent('Rösttest från min telefon') + '&body=' + encodeURIComponent(body);
+  };
+  document.getElementById('copy').onclick = function () {
+    var t = L.join('\n'), b = this;
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () { b.textContent = 'Kopierat!'; }, function () { prompt('Kopiera texten:', t); });
+    else prompt('Kopiera texten:', t);
+  };
+})();
+</script>
+</body>
+</html>
