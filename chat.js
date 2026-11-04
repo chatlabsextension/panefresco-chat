@@ -51,7 +51,11 @@ window.SMARTSVAR = {
   talkFirst: true,
   launcherTalkText: 'Prata med oss',
   launcherText: 'Fråga oss',
-  launcherRotate: ['I speak every language', 'Parlo tutte le lingue', 'Jag pratar alla språk', 'Hablo todos los idiomas', 'Je parle toutes les langues', 'Ich spreche alle Sprachen'],
+  // Raden under växlar mellan språken som rösten kan (samma som voiceLangs). Skriva går på i stort sett alla språk.
+  launcherRotate: ['Svenska', 'English', 'Italiano', 'Español', 'Français', 'Deutsch'],
+  voiceLangs: ['sv-SE', 'en-GB', 'it-IT', 'es-ES', 'fr-FR', 'de-DE'],
+  // Popupen visar förslagen, inte en till Prata-knapp.
+  teaserTalk: false,
   launcherMark: true,
 
   // EU:s AI-förordning: besökaren ska veta att hen pratar med en AI. Står under namnet och i foten.
@@ -60,7 +64,7 @@ window.SMARTSVAR = {
 
   // Röstinmatning: en stor Prata-knapp i skrivfältet och ett tips i starten.
   voice: true,
-  teaser: 'Ciao! Jag är nya medarbetaren på Panefresco. Prata med mig om menyn, bord eller allergier, på vilket språk ni vill.',
+  teaser: 'Ciao! Jag är nya medarbetaren på Panefresco. Fråga mig om menyn, bord eller allergier, gärna med rösten.',
   texts: { ai: 'AI', input: 'Skriv er fråga' },
 
   thinking: 'oven',
