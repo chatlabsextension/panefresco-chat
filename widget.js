@@ -39,7 +39,7 @@
     v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
-    bredvid namnet (till exempel Nuovo). launcherTalk: true startar mikrofonen direkt när chattknappen trycks.
+    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen.
     Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
@@ -850,8 +850,8 @@
         launch.setAttribute('aria-label', talk1() ? (clean(C.launcherTalkText) || T.talkGo) : T.chatWith.replace('{name}', name));
         q('.tname').innerHTML = '<b>' + esc(name) + '</b>' + (clean(C.badge) ? '<span class="bdg">' + esc(clean(C.badge)) + '</span>' : '') + (ai ? ' · ' + esc(ai) : '');
         teaser.querySelector('p').textContent = clean(C.teaser) || opening();
-        var tc = teaser.querySelector('.chips'); tc.innerHTML = ''; tc.className = talk1() ? 'tact' : 'chips';
-        if (talk1()) {
+        var tc = teaser.querySelector('.chips'); tc.innerHTML = ''; var tTalk = talk1() && C.teaserTalk !== false; tc.className = tTalk ? 'tact' : 'chips';
+        if (tTalk) {
           var go = el('button', 'tgo'); go.type = 'button'; go.innerHTML = svg(UI.mic, 18) + '<span></span>'; go.lastChild.textContent = clean(C.launcherTalkText) || T.talkGo;
           go.onclick = function (e) { e.stopPropagation(); hideTeaser(); listen(); };
           var ty = el('button', 'tsk'); ty.type = 'button'; ty.textContent = T.typeInstead;
