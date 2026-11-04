@@ -33,8 +33,8 @@ window.SMARTSVAR = {
     '<path d="M16.4 10.6c2.2-2.9 6-2.8 7.3 0-1.3 2.8-5.1 2.9-7.3 0z" fill="#2F8B3B"/><path d="M8.6 18.6c1.4-3.3 5.1-3.9 6.8-1.6-1.9 2.4-5.4 2.6-6.8 1.6z" fill="#2F8B3B"/></svg>',
 
   headline: 'Benvenuti!',
-  tagline: '»Pasta först. Viktiga beslut sen.«',
-  opening: 'Ciao! Jag är nyanställd här på Panefresco. Menyn kan jag redan utantill, men som alla nya kan jag ta fel ibland. Då säger ni bara till, så lär jag mig.',
+  tagline: 'Speaks all languages',
+  opening: 'Ciao! Jag är ny här på Panefresco. Fråga mig om menyn, bord eller allergier, på vilket språk ni vill. Som ny kan jag ta fel ibland, säg bara till.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
   vfOpening: false,
 
@@ -53,8 +53,9 @@ window.SMARTSVAR = {
   talkFirst: true,
   launcherTalkText: 'Prata med oss',
   launcherText: 'Fråga oss',
-  // Raden under växlar mellan språken som rösten kan (samma som voiceLangs). Skriva går på i stort sett alla språk.
-  launcherRotate: ['Svenska', 'English', 'Italiano', 'Español', 'Français', 'Deutsch'],
+  launcherSub: 'Speaks all languages',
+  // Inget röstkort i starten; Prata-knappen sitter i skrivfältet.
+  talkCard: false,
   voiceLangs: ['sv-SE', 'en-GB', 'it-IT', 'es-ES', 'fr-FR', 'de-DE'],
   // Ingen språkknapp: rösten börjar på svenska och byter själv till gästens språk efter första frågan.
   voiceLangButton: false,
@@ -90,7 +91,10 @@ window.SMARTSVAR = {
     '.chips button{font-size:14.5px}',
     '.name{letter-spacing:.07em;color:#2747A0}',
     '.hl{color:#2747A0;letter-spacing:.03em}',
-    '.tg{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:20px;line-height:1.25;color:#E0782F;max-width:290px}',
+    '.tg{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:21px;line-height:1.25;color:#E0782F;max-width:290px}',
+    // Prata-knappen i skrivfältet: lite större
+    '.mic{height:46px;padding:0 20px 0 15px;font-size:15.5px;gap:8px}',
+    'textarea{height:46px;padding:12px 0}',
     '.chips button{background:#fff;color:#2747A0;box-shadow:inset 0 0 0 1px rgba(39,71,160,.3)}',
     '.chips button:hover{background:#EEF2FB}',
     '.card .cbtn{background:#fff;box-shadow:inset 0 0 0 1px rgba(39,71,160,.3)}',
@@ -113,6 +117,6 @@ window.SMARTSVAR = {
     '.teaser .chips button{background:#fff}',
     '.shim{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;font-weight:600}',
     // Mycket smala telefoner (under 350 px): citatet döljs så att Benvenuti och röstkortet får plats
-    '@media (max-width:350px){.w[data-m=mobile] .tg{display:none}}'
+    '@media (max-width:350px){.w[data-m=mobile] .hl{font-size:24px}}'
   ].join('')
 };
