@@ -1,4 +1,4 @@
-/* Panefresco – inställningar för Smartsvar-chatten (kräver widget.js v4.1 eller senare).
+/* Panefresco – inställningar för Smartsvar-chatten (kräver widget.js v5.4 eller senare).
    Looken kommer från Panefrescos meny: koboltblått, krämvitt menypapper, citronglöd,
    Cinzel i rubrikerna och citat i kursiv Cormorant Garamond i orange.
    Medan chatten tänker gräddas en napolitansk pizza i ugnen (thinking: 'oven'). */
@@ -32,7 +32,7 @@ window.SMARTSVAR = {
 
   headline: 'Benvenuti!',
   tagline: '»Pasta först. Viktiga beslut sen.«',
-  opening: 'Jag är Panefrescos AI-assistent. Fråga mig om menyn, öppettider, bordsbokning eller allergier. I answer in English too.',
+  opening: 'Ciao! Jag är nyanställd här på Panefresco. Menyn kan jag redan utantill, men som alla nya kan jag ta fel ibland. Då säger ni bara till, så lär jag mig.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
   vfOpening: false,
 
@@ -46,18 +46,22 @@ window.SMARTSVAR = {
   ],
   suggestions: ['Boka bord', 'Vad finns på lunch?', 'Har ni glutenfritt?'],
   placeholder: 'Skriv er fråga…',
+  // Rösten först: chattknappen, popupen och starten i chatten lockar till att prata.
+  // I webbläsare utan röst (till exempel Firefox) står det Fråga oss som förut.
+  talkFirst: true,
+  launcherTalkText: 'Prata med oss',
   launcherText: 'Fråga oss',
-  launcherSub: 'AI-assistent · skriv eller prata',
+  launcherRotate: ['I speak every language', 'Parlo tutte le lingue', 'Jag pratar alla språk', 'Hablo todos los idiomas', 'Je parle toutes les langues', 'Ich spreche alle Sprachen'],
   launcherMark: true,
 
   // EU:s AI-förordning: besökaren ska veta att hen pratar med en AI. Står under namnet och i foten.
-  status: 'AI-assistent · svarar direkt',
-  aiNotice: 'Ni chattar med en AI, som kan ha fel.',
+  status: 'AI-assistent · ny på jobbet',
+  aiNotice: 'Jag är en AI och ny på jobbet, så jag kan ta fel ibland.',
 
   // Röstinmatning: en stor Prata-knapp i skrivfältet och ett tips i starten.
   voice: true,
-  teaser: 'Benvenuti! Undrar ni något om menyn, eller vill ni boka bord?',
-  texts: { ai: 'AI-assistent', input: 'Skriv er fråga' },
+  teaser: 'Ciao! Jag är nya medarbetaren på Panefresco. Prata med mig om menyn, bord eller allergier, på vilket språk ni vill.',
+  texts: { ai: 'AI', input: 'Skriv er fråga' },
 
   thinking: 'oven',
   // Hur länge pizzan minst är i ugnen och hur länge den ligger på fatet innan svaret visas (millisekunder). Kortare = snabbare svar.
@@ -88,6 +92,14 @@ window.SMARTSVAR = {
     '.launch .av{width:42px!important;height:42px!important;margin-left:0!important;background:#FBF6EA!important;box-shadow:0 0 0 2px #F4C430,0 2px 6px rgba(0,0,0,.18)!important}',
     '.launch .lt1{font-family:"Cinzel",Georgia,serif;font-weight:700;font-size:16px;letter-spacing:.04em}',
     '.w[data-m=mobile] .launch{width:64px;height:64px;padding:0}',
+    '.w.talk1[data-m=mobile] .launch{width:auto;height:60px;padding:0 20px 0 9px}',
+    // Rösten först: mikrofonen i knappen på ett krämvitt fat med citronring, kortet i chatten i menyns stil
+    '.w.talk1 .launch .lm{width:44px;height:44px;margin-left:-4px;background:#FBF6EA;color:#2747A0;box-shadow:0 0 0 2px #F4C430,0 2px 6px rgba(0,0,0,.18)}',
+    '.w.talk1 .launch .lm::after{border-color:#F4C430}',
+    '.talkc{background:#fff;box-shadow:0 0 0 1px rgba(39,71,160,.22),0 12px 28px -18px rgba(39,71,160,.5)}',
+    '.talkc .t1{font-family:"Cinzel",Georgia,serif;letter-spacing:.04em;color:#2747A0}',
+    '.talkc .t2{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;font-size:17px;color:#E0782F}',
+    '.teaser .tgo{font-family:"Cinzel",Georgia,serif;font-weight:700;letter-spacing:.04em}',
     '.w[data-m=mobile] .launch .av{width:50px!important;height:50px!important}',
     '.foot{font-size:11.5px}',
     '.teaser .chips button{background:#fff}',
