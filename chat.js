@@ -54,6 +54,8 @@ window.SMARTSVAR = {
   // Raden under växlar mellan språken som rösten kan (samma som voiceLangs). Skriva går på i stort sett alla språk.
   launcherRotate: ['Svenska', 'English', 'Italiano', 'Español', 'Français', 'Deutsch'],
   voiceLangs: ['sv-SE', 'en-GB', 'it-IT', 'es-ES', 'fr-FR', 'de-DE'],
+  // Ingen språkknapp: rösten börjar på svenska och byter själv till gästens språk efter första frågan.
+  voiceLangButton: false,
   // Popupen visar förslagen, inte en till Prata-knapp.
   teaserTalk: false,
   launcherMark: true,
