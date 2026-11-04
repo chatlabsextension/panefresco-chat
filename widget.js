@@ -39,7 +39,7 @@
     v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
-    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster.
+    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster. talkCard: false tar bort röstkortet i starten.
     Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
@@ -843,7 +843,7 @@
       vPick = store(id + ':vl') || null;
       voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
       w.classList.toggle('talk1', talk1()); w.classList.toggle('left', C.side === 'left');
-      var tcard = q('.talkc'); if (tcard) { if (talk1()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
+      var tcard = q('.talkc'); if (tcard) { if (wantCard()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
       foot.innerHTML = note ? esc(note) : (by ? esc(T.poweredBy) + ' <a href="' + esc(C.poweredUrl || 'https://smartsvar.se') + '" target="_blank" rel="noopener">' + esc(by) + '</a>' : '');
@@ -1497,7 +1497,7 @@
       var h = heroEl(), known = C.demo || own ? null : lstore(id + ':welcome'); msgs.appendChild(h);
       // Har Voiceflow-flödet en egen öppning visas den direkt (den som minns från förra besöket), annars den som står i inställningarna.
       if (known) { h.dataset.vf = '1'; h.querySelector('.op').innerHTML = md(known); }
-      if (!w.classList.contains('has') && talk1()) h.appendChild(talkCard());
+      if (!w.classList.contains('has') && wantCard()) h.appendChild(talkCard());
       if (!w.classList.contains('has') && suggestions().length) h.appendChild(startBox());
       if (!w.classList.contains('has') && voiceOK && C.voiceHint && !talk1()) h.appendChild(talkEl());
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
@@ -1713,6 +1713,7 @@
       if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) {} }
     }
     function talk1() { return !!(C.talkFirst && voiceOK); }
+    function wantCard() { return talk1() && C.talkCard !== false; }
     // En rad som växlar mellan flera texter. Alla ligger i samma ruta, så bredden står still.
     function stopRot(node) { if (node && node._rt) { clearInterval(node._rt); node._rt = 0; } }
     function rotate(node, list) {
@@ -1974,7 +1975,7 @@
         requestAnimationFrame(glow);
       } else {
         var hh = q('.hero') || msgs;
-        if (talk1() && !msgs.querySelector('.talkc')) hh.appendChild(talkCard());
+        if (wantCard() && !msgs.querySelector('.talkc')) hh.appendChild(talkCard());
         if (suggestions().length && !msgs.querySelector('.chips')) hh.appendChild(startBox());
       }
       requestAnimationFrame(function () { scroll.scrollTop = scroll.scrollHeight; });
