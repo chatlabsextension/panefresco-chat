@@ -14,6 +14,8 @@
 
 window.SMARTSVAR = {
   name: 'Panefresco',
+  // Chatten ligger nere till vänster på panefresco.se.
+  side: 'left',
   voiceflow: { projectID: '6ac5f9e6c5932bcb42d6fa30', versionID: 'production' },
   language: 'sv',
   phone: '076-593 83 31',
@@ -109,6 +111,8 @@ window.SMARTSVAR = {
     '.w[data-m=mobile] .launch .av{width:50px!important;height:50px!important}',
     '.foot{font-size:11.5px}',
     '.teaser .chips button{background:#fff}',
-    '.shim{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;font-weight:600}'
+    '.shim{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;font-weight:600}',
+    // Mycket smala telefoner (under 350 px): citatet döljs så att Benvenuti och röstkortet får plats
+    '@media (max-width:350px){.w[data-m=mobile] .tg{display:none}}'
   ].join('')
 };
