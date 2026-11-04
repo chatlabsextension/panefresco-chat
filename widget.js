@@ -39,7 +39,7 @@
     v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
-    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen.
+    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt.
     Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
@@ -413,7 +413,7 @@
     reset: 'Börja om', minimize: 'Minimera', send: 'Skicka', close: 'Stäng', retry: 'Försök igen',
     failed: 'Svaret kom inte fram.', callUs: 'Ring oss gärna på {phone}.', today: 'Idag', poweredBy: 'Drivs av',
     thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}',
-    talk: 'Prata', talkBig: 'Tryck och prata', talkGo: 'Prata med oss', typeInstead: 'Skriv i stället', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
+    talk: 'Prata', talkBig: 'Tryck och prata', talkGo: 'Prata med oss', typeInstead: 'Skriv i stället', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Säg er fråga…',
     speaking: 'Stoppa', readOn: 'Läs upp svaren', readOff: 'Sluta läsa upp svaren',
     micBlocked: 'Mikrofonen är blockerad. Tillåt den för den här sidan i webbläsaren och försök igen, eller skriv er fråga.',
     micBlockedIOS: 'Mikrofonen är blockerad. Gå till Inställningar → Safari → Mikrofon och välj Tillåt (i Chrome: Inställningar → Chrome → Mikrofon), ladda om sidan och försök igen.',
@@ -588,7 +588,7 @@
   textarea{flex:1;min-width:0;height:42px;max-height:124px;padding:10px 0;border:0;outline:0;resize:none;background:none;font-size:15px;line-height:1.4;color:var(--ink)}
   textarea:disabled{opacity:.5}
   .w[data-m=mobile] textarea{font-size:16px} /* under 16px zoomar iOS in vid fokus */
-  textarea::placeholder{color:var(--muted);opacity:1}
+  textarea::placeholder{color:var(--muted);opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .send{width:40px;height:40px;margin:1px;border-radius:min(var(--r3),20px);display:grid;place-items:center;flex-shrink:0;background:var(--paper2);color:var(--ink);
     transition:background .15s,color .15s,transform .15s}
   .send:not(:disabled){background:var(--a);color:var(--on-a)}
@@ -1608,7 +1608,7 @@
     }
     function setListening(on) {
       listening = on; field.classList.toggle('rec', on); paintMic();
-      ta.placeholder = on ? T.listeningPh + ' (' + (LANGNAME[voiceLang().slice(0, 2).toLowerCase()] || voiceLang()) + ')' : phDefault; sync(); paintLang();
+      ta.placeholder = on ? T.listeningPh : phDefault; sync(); paintLang();
     }
     var noteT = 0;
     function micNote(msg) {
@@ -1640,7 +1640,7 @@
     function paintLang() {
       var b = q('.vl'); if (!b) return;
       var tag = voiceLang(), code = tag.slice(0, 2).toLowerCase(), name = LANGNAME[code] || tag;
-      b.hidden = !voiceOK || !!C.voiceLang || voiceLangs().length < 2;
+      b.hidden = !voiceOK || !!C.voiceLang || C.voiceLangButton === false || voiceLangs().length < 2;
       b.textContent = code.toUpperCase();
       b.setAttribute('aria-label', 'Språk för rösten: ' + name); b.title = 'Språk för rösten: ' + name;
     }
