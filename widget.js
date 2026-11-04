@@ -35,7 +35,12 @@
     uppläsningen slås på, och gästen pratar in frågan med tangentbordets mikrofon och får svaret uppläst.
     v5.3: svaret hörs även när iPhonen står på ljudlös. Rösten spelas via ljudmotorn (Web Audio), och den tystas av
     ljudlös-knappen om inte ljudsessionen sätts till uppspelning (navigator.audioSession, iOS 17+). Det görs nu vid varje
-    tryck på Prata, högtalaren eller Skicka, bara när rösten är på. */
+    tryck på Prata, högtalaren eller Skicka, bara när rösten är på.
+    v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
+    "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
+    låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
+    bredvid namnet (till exempel Nuovo). launcherTalk: true startar mikrofonen direkt när chattknappen trycks.
+    Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -408,7 +413,7 @@
     reset: 'Börja om', minimize: 'Minimera', send: 'Skicka', close: 'Stäng', retry: 'Försök igen',
     failed: 'Svaret kom inte fram.', callUs: 'Ring oss gärna på {phone}.', today: 'Idag', poweredBy: 'Drivs av',
     thinking: '', input: 'Skriv din fråga', prev: 'Föregående', next: 'Nästa', chatWith: 'Chatta med {name}',
-    talk: 'Prata', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
+    talk: 'Prata', talkBig: 'Tryck och prata', talkGo: 'Prata med oss', typeInstead: 'Skriv i stället', listening: 'Lyssnar', talkHint: 'Ni kan också prata i stället för att skriva', listeningPh: 'Lyssnar… säg er fråga',
     speaking: 'Stoppa', readOn: 'Läs upp svaren', readOff: 'Sluta läsa upp svaren',
     micBlocked: 'Mikrofonen är blockerad. Tillåt den för den här sidan i webbläsaren och försök igen, eller skriv er fråga.',
     micBlockedIOS: 'Mikrofonen är blockerad. Gå till Inställningar → Safari → Mikrofon och välj Tillåt (i Chrome: Inställningar → Chrome → Mikrofon), ladda om sidan och försök igen.',
@@ -648,6 +653,51 @@
   .w[data-m=mobile] .launch .li{width:26px;height:26px}
   .w[data-m=mobile] .launch .av{margin-left:0;width:42px;height:42px}
   .w[data-m=mobile].open .launch,.w.open .teaser{opacity:0;pointer-events:none;transition:opacity .2s}
+  /* Växlande rad: alla texter ligger på samma plats, så att bredden aldrig hoppar. */
+  .rt{display:inline-grid;vertical-align:top}
+  .rt>span{grid-area:1/1;opacity:0;transform:translateY(5px);transition:opacity .35s ease,transform .35s var(--ease);white-space:nowrap}
+  .rt>span.on{opacity:1;transform:none}
+  .rt>span.off{transform:translateY(-5px)}
+  /* Etiketten bredvid namnet */
+  .nrow{display:flex;align-items:center;gap:8px;min-width:0}
+  .bdg{flex-shrink:0;padding:3px 8px 2px;border-radius:999px;background:var(--chip);color:var(--d);font-family:var(--fb);font-size:10px;font-weight:700;line-height:1.3;letter-spacing:.09em;text-transform:uppercase}
+  .bdg:empty{display:none}
+  .teaser .bdg{margin:0 2px 0 6px;vertical-align:1px}
+  /* Rösten först (talkFirst): mikrofon och ljudvågor i chattknappen */
+  .launch .lr{display:flex;align-items:center;gap:8px}
+  .launch .lm,.launch .lw{display:none}
+  .w.talk1 .launch .li,.w.talk1 .launch .av{display:none!important}
+  .w.talk1 .launch .lm{display:grid;position:relative;place-items:center;width:40px;height:40px;margin-left:-6px;border-radius:50%;background:#fff;color:var(--a);flex-shrink:0}
+  .w.talk1 .launch .lm::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid #fff;animation:ring 2.4s ease-out infinite}
+  .w.talk1 .launch .lw{display:inline-flex;align-items:center;gap:2.5px;height:16px}
+  .launch .lw i{display:block;width:3px;height:5px;border-radius:2px;background:currentColor;opacity:.85;animation:wave 1.1s ease-in-out infinite}
+  .launch .lw i:nth-child(2){animation-delay:-.7s}.launch .lw i:nth-child(3){animation-delay:-.4s}.launch .lw i:nth-child(4){animation-delay:-.15s}
+  .w.talk1.open .launch .lm{display:none}
+  .w.talk1[data-m=mobile] .launch{width:auto;padding:0 20px 0 10px;border-radius:29px}
+  .w.talk1[data-m=mobile] .launch .lt{display:flex}
+  .w.talk1[data-m=mobile] .launch .lm{margin-left:0}
+  @keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.5);opacity:0}}
+  /* Rösten först: stor Prata-knapp i popupen */
+  .teaser .tact{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+  .teaser .tgo{display:flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:0 18px;border-radius:999px;background:var(--a);color:var(--on-a);
+    font-size:15px;font-weight:600;box-shadow:0 8px 18px -10px var(--ash);transition:filter .15s,transform .15s}
+  .teaser .tgo:hover{filter:brightness(1.07)}
+  .teaser .tgo:active{transform:scale(.98)}
+  .teaser .tsk{align-self:center;padding:6px 10px;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+  .teaser .tsk:hover{color:var(--ink)}
+  /* Rösten först: stort röstkort i starten */
+  .talkc{display:flex;align-items:center;gap:15px;width:100%;margin-top:18px;padding:12px 18px 12px 12px;border-radius:calc(var(--r2) + 6px);background:#fff;text-align:left;
+    box-shadow:0 0 0 1px var(--line),0 12px 28px -18px var(--sh);transition:transform .2s var(--ease),box-shadow .2s;animation:rise .5s var(--ease) .1s both}
+  .talkc:hover{transform:translateY(-1px);box-shadow:0 0 0 1px var(--focus),0 16px 32px -18px var(--sh)}
+  .talkc:active{transform:scale(.99)}
+  .talkc:disabled{opacity:.6;cursor:default}
+  .talkc .tm{position:relative;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:var(--a);color:var(--on-a);flex-shrink:0}
+  .talkc .tm::before,.talkc .tm::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid var(--a);opacity:0;animation:ring 2.4s ease-out infinite}
+  .talkc .tm::after{animation-delay:1.2s}
+  .talkc .tt{min-width:0;display:flex;flex-direction:column}
+  .talkc .t1{font-family:var(--fd);font-weight:var(--fw);font-size:calc(18px * var(--fz));line-height:1.2;color:var(--d)}
+  .talkc .t2{margin-top:4px;font-size:13.5px;line-height:1.3;color:var(--muted)}
+  .hero .talkc+.chips{margin-top:12px}
 
   /* Popupen: en vit pratbubbla mot knappen. Namnet och AI-märket, en mening och två förslag i kundens ton. */
   .teaser{position:fixed;z-index:2;right:var(--or);bottom:calc(var(--ob) + 70px + var(--sb));width:min(300px,calc(var(--vw) - 36px));padding:14px 16px 16px;
@@ -740,7 +790,7 @@
       '<section class="panel" role="dialog">' +
         '<span class="grab" aria-hidden="true"></span>' +
         '<header class="top"><div class="bar">' +
-          '<div class="who"><span class="av"></span><img class="lg" alt=""><span class="nm"><span class="name"></span><span class="sub"></span></span></div>' +
+          '<div class="who"><span class="av"></span><img class="lg" alt=""><span class="nm"><span class="nrow"><span class="name"></span><span class="bdg"></span></span><span class="sub"></span></span></div>' +
           '<button class="ib snd" type="button" hidden></button>' +
           '<button class="ib rs" type="button" aria-label="' + esc(T.reset) + '" title="' + esc(T.reset) + '">' + svg(UI.reset, 17) + '</button>' +
           '<button class="ib x" type="button" aria-label="' + esc(T.minimize) + '" title="' + esc(T.minimize) + '">' + svg(UI.down, 21) + '</button></div></header>' +
@@ -754,7 +804,7 @@
       '</section>' +
       (inline ? '' : '<div class="teaser" role="button" tabindex="0" hidden><button class="tx-x" type="button" aria-label="' + esc(T.close) + '">' + svg(UI.x, 14) + '</button>' +
         '<div class="tn"><span class="av"></span><span class="tname"></span></div><p></p><div class="chips"></div></div>' +
-        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lt"><span class="lt1"></span><span class="lt2"></span></span><span class="lc">' + svg(UI.down, 24) + '</span></button>') +
+        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lm" aria-hidden="true">' + svg(UI.mic, 20) + '</span><span class="lt"><span class="lr"><span class="lt1"></span><span class="lw" aria-hidden="true"><i></i><i></i><i></i><i></i></span></span><span class="lt2"></span></span><span class="lc">' + svg(UI.down, 24) + '</span></button>') +
       '</div>';
 
     var q = function (s) { return root.querySelector(s); };
@@ -781,8 +831,11 @@
       panel.setAttribute('aria-label', 'Chatt med ' + name);
       phDefault = C.placeholder || 'Skriv din fråga…'; if (!listening) ta.placeholder = phDefault;
       q('.sub').textContent = clean(C.status);
+      q('.bdg').textContent = clean(C.badge);
       vPick = store(id + ':vl') || null;
       voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
+      w.classList.toggle('talk1', talk1());
+      var tcard = q('.talkc'); if (tcard) { if (talk1()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
       foot.innerHTML = note ? esc(note) : (by ? esc(T.poweredBy) + ' <a href="' + esc(C.poweredUrl || 'https://smartsvar.se') + '" target="_blank" rel="noopener">' + esc(by) + '</a>' : '');
@@ -792,11 +845,19 @@
       var intro = q('.intro'); if (intro) paintIntro(intro);
       var sc = q('.start'); if (sc) sc.parentNode.replaceChild(startBox(), sc);
       if (launch) {
-        q('.lt1').textContent = clean(C.launcherText) || 'Fråga oss'; q('.lt2').textContent = clean(C.launcherSub); launch.setAttribute('aria-label', T.chatWith.replace('{name}', name));
-        q('.tname').innerHTML = '<b>' + esc(name) + '</b>' + (ai ? ' · ' + esc(ai) : '');
+        q('.lt1').textContent = (talk1() && clean(C.launcherTalkText)) || clean(C.launcherText) || 'Fråga oss';
+        if (C.launcherRotate && C.launcherRotate.length) rotate(q('.lt2'), C.launcherRotate); else { stopRot(q('.lt2')); q('.lt2').textContent = clean(C.launcherSub); }
+        launch.setAttribute('aria-label', talk1() ? (clean(C.launcherTalkText) || T.talkGo) : T.chatWith.replace('{name}', name));
+        q('.tname').innerHTML = '<b>' + esc(name) + '</b>' + (clean(C.badge) ? '<span class="bdg">' + esc(clean(C.badge)) + '</span>' : '') + (ai ? ' · ' + esc(ai) : '');
         teaser.querySelector('p').textContent = clean(C.teaser) || opening();
-        var tc = teaser.querySelector('.chips'); tc.innerHTML = '';
-        suggestions().slice(0, 2).forEach(function (t) {
+        var tc = teaser.querySelector('.chips'); tc.innerHTML = ''; tc.className = talk1() ? 'tact' : 'chips';
+        if (talk1()) {
+          var go = el('button', 'tgo'); go.type = 'button'; go.innerHTML = svg(UI.mic, 18) + '<span></span>'; go.lastChild.textContent = clean(C.launcherTalkText) || T.talkGo;
+          go.onclick = function (e) { e.stopPropagation(); hideTeaser(); listen(); };
+          var ty = el('button', 'tsk'); ty.type = 'button'; ty.textContent = T.typeInstead;
+          ty.onclick = function (e) { e.stopPropagation(); hideTeaser(); open(); setTimeout(function () { ta.focus({ preventScroll: true }); }, 140); };
+          tc.appendChild(go); tc.appendChild(ty);
+        } else suggestions().slice(0, 2).forEach(function (t) {
           var b = document.createElement('button'); b.type = 'button'; b.textContent = t;
           b.onclick = function (e) { e.stopPropagation(); hideTeaser(); send(t); }; tc.appendChild(b);
         });
@@ -1428,8 +1489,9 @@
       var h = heroEl(), known = C.demo || own ? null : lstore(id + ':welcome'); msgs.appendChild(h);
       // Har Voiceflow-flödet en egen öppning visas den direkt (den som minns från förra besöket), annars den som står i inställningarna.
       if (known) { h.dataset.vf = '1'; h.querySelector('.op').innerHTML = md(known); }
+      if (!w.classList.contains('has') && talk1()) h.appendChild(talkCard());
       if (!w.classList.contains('has') && suggestions().length) h.appendChild(startBox());
-      if (!w.classList.contains('has') && voiceOK && C.voiceHint) h.appendChild(talkEl());
+      if (!w.classList.contains('has') && voiceOK && C.voiceHint && !talk1()) h.appendChild(talkEl());
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
       // Voiceflow-flödets egen öppning ersätter den inställda så fort den kommer, så länge besökaren inte har skrivit något.
       if (!C.demo && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
@@ -1451,7 +1513,7 @@
       if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); }
       turnVoice = viaVoice; viaVoice = false; stopSpeak(); unlock();
       open(); hideTeaser(); flushTypers();
-      [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk'), function (n) { n.remove(); });
+      [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
       if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
       w.classList.add('has');
       lastUser = text; paintLang();
@@ -1642,6 +1704,31 @@
       stopSpeak();
       if (actx && actx.state === 'running') { try { actx.suspend(); } catch (e) {} }
     }
+    function talk1() { return !!(C.talkFirst && voiceOK); }
+    // En rad som växlar mellan flera texter. Alla ligger i samma ruta, så bredden står still.
+    function stopRot(node) { if (node && node._rt) { clearInterval(node._rt); node._rt = 0; } }
+    function rotate(node, list) {
+      stopRot(node);
+      list = (list || []).map(clean).filter(Boolean);
+      node.innerHTML = '<span class="rt">' + list.map(function (t, i) { return '<span' + (i ? '' : ' class="on"') + (i ? ' aria-hidden="true"' : '') + '>' + esc(t) + '</span>'; }).join('') + '</span>';
+      if (list.length < 2) return;
+      var k = 0, kids = node.firstChild.children;
+      node._rt = setInterval(function () {
+        if (!alive || !node.isConnected) { stopRot(node); return; }
+        if (document.hidden) return;
+        var a = kids[k]; k = (k + 1) % kids.length; var b = kids[k];
+        a.className = 'off'; a.setAttribute('aria-hidden', 'true');
+        b.className = 'on'; b.removeAttribute('aria-hidden');
+        setTimeout(function () { if (a.className === 'off') a.className = ''; }, 400);
+      }, num(C.rotateMs, 2600));
+    }
+    function talkCard() {
+      var b = el('button', 'talkc'); b.type = 'button';
+      b.innerHTML = '<span class="tm">' + svg(UI.mic, 26) + '</span><span class="tt"><span class="t1"></span><span class="t2"></span></span>';
+      b.querySelector('.t1').textContent = T.talkBig;
+      var rl = C.talkRotate || C.launcherRotate; if (rl && rl.length) rotate(b.querySelector('.t2'), rl); else b.querySelector('.t2').textContent = T.talkHint;
+      b.onclick = listen; return b;
+    }
     function talkEl() {
       var b = el('button', 'talk'); b.type = 'button';
       b.innerHTML = '<span class="tk">' + svg(UI.mic, 16) + '</span><span></span>';
@@ -1826,7 +1913,7 @@
     q('.snd').onclick = function () { unlock(); speakOn = !speakOn; store(id + ':spk', speakOn ? '1' : null); paintSnd(); if (!speakOn) stopSpeak(); };
     if (TTS && TTS.getVoices) { TTS.getVoices(); if ('onvoiceschanged' in TTS) TTS.addEventListener('voiceschanged', function () {}); }
     if (launch) {
-      launch.onclick = function () { isOpen ? close() : open(); };
+      launch.onclick = function () { if (isOpen) close(); else if (talk1() && C.launcherTalk) listen(); else open(); };
       q('.scrim').onclick = close;
       teaser.onclick = function () { hideTeaser(); open(); };
       teaser.onkeydown = function (e) { if (e.key === 'Enter') { hideTeaser(); open(); } };
@@ -1877,7 +1964,11 @@
         w.classList.add('has');
         [].forEach.call(msgs.querySelectorAll('.chips'), function (n) { if (n !== msgs.lastElementChild) n.remove(); });
         requestAnimationFrame(glow);
-      } else if (suggestions().length && !msgs.querySelector('.chips')) (q('.hero') || msgs).appendChild(startBox());
+      } else {
+        var hh = q('.hero') || msgs;
+        if (talk1() && !msgs.querySelector('.talkc')) hh.appendChild(talkCard());
+        if (suggestions().length && !msgs.querySelector('.chips')) hh.appendChild(startBox());
+      }
       requestAnimationFrame(function () { scroll.scrollTop = scroll.scrollHeight; });
     } else if (inline) greet();
     if (!inline && store(id + ':open') && w.dataset.m === 'desktop') open();
@@ -1905,7 +1996,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '5.3.0', base: BASE, mount: mount,
+    __v: '5.4.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
