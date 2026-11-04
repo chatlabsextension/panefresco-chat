@@ -39,7 +39,7 @@
     v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
-    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt.
+    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster.
     Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
@@ -698,6 +698,14 @@
   .talkc .t1{font-family:var(--fd);font-weight:var(--fw);font-size:calc(18px * var(--fz));line-height:1.2;color:var(--d)}
   .talkc .t2{margin-top:4px;font-size:13.5px;line-height:1.3;color:var(--muted)}
   .hero .talkc+.chips{margin-top:12px}
+  /* side: 'left' – knappen, popupen och panelen nere till vänster i stället för till höger. offsetRight blir då avståndet från vänster. */
+  .w.left[data-m=desktop] .panel{right:auto;left:var(--or);transform-origin:0 100%}
+  .w.left .launch{right:auto;left:var(--or)}
+  .w.left .teaser{right:auto;left:var(--or);border-radius:20px 20px 20px 5px;transform-origin:0 100%}
+  .w.left[data-m=mobile] .launch{right:auto;left:16px}
+  .w.left[data-m=mobile] .teaser{right:auto;left:16px}
+  /* Låga mobilskärmar: rubriken och starten tar mindre plats, så att allt syns utan att man rullar. */
+  @media (max-height:700px){.w[data-m=mobile] .intro{min-height:0;padding:4px 8px 16px}.w[data-m=mobile] .hl{font-size:calc(26px * var(--fz))}.w[data-m=mobile] .tg{margin-top:6px}.w[data-m=mobile] .talkc{margin-top:12px;padding:9px 14px 9px 9px}.w[data-m=mobile] .talkc .tm{width:50px;height:50px}.w[data-m=mobile] .hero .chips{margin-top:10px}.w[data-m=mobile] .msgs>:first-child:not(.intro){margin-top:16px}}
 
   /* Popupen: en vit pratbubbla mot knappen. Namnet och AI-märket, en mening och två förslag i kundens ton. */
   .teaser{position:fixed;z-index:2;right:var(--or);bottom:calc(var(--ob) + 70px + var(--sb));width:min(300px,calc(var(--vw) - 36px));padding:14px 16px 16px;
@@ -834,7 +842,7 @@
       q('.bdg').textContent = clean(C.badge);
       vPick = store(id + ':vl') || null;
       voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
-      w.classList.toggle('talk1', talk1());
+      w.classList.toggle('talk1', talk1()); w.classList.toggle('left', C.side === 'left');
       var tcard = q('.talkc'); if (tcard) { if (talk1()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
