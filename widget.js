@@ -39,7 +39,7 @@
     v5.4: talkFirst: true sätter rösten först. Chattknappen visar en mikrofon och ljudvågor med launcherTalkText (till exempel
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
-    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster. talkCard: false tar bort röstkortet i starten. flags: ['se','gb','it','es','fr','de','+'] visar runda flaggor under rubriken.
+    bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster. talkCard: false tar bort röstkortet i starten. flags: ['se','gb','it','es','fr','de','ar','+'] visar runda flaggor under rubriken; med röst väljer ett tryck på flaggan röstens språk och startar mikrofonen.
     Saknar webbläsaren röst blir allt som förut. */
 (function () {
   'use strict';
@@ -286,13 +286,22 @@
     es: 'y el la que es no un una para con qué cómo puede hola gracias hay cuál cuándo dónde precio reservar',
     fr: 'et le la les est pas un une pour avec quoi comment peut bonjour merci quel quand où prix réserver',
     nl: 'en de het een is niet ik jij wat hoe kan hallo bedankt welke wanneer waar prijs boeken',
-    it: 'e il la che è non un una per con cosa come può ciao grazie quale quando dove prezzo prenotare'
+    it: 'e il la che è non un una per con cosa come può ciao grazie quale quando dove prezzo prenotare',
+    ar: 'في من على هل ما هو هي أنا نحن مرحبا شكرا لا نعم متى أين كم هذا هذه'
   };
   var STOPSET = {};
   Object.keys(STOP).forEach(function (k) { STOPSET[k] = {}; STOP[k].split(' ').forEach(function (w) { STOPSET[k][w] = 1; }); });
   function guessLang(text, fallback) {
-    var words = String(text || '').toLowerCase().match(/[a-zà-ÿåäöæøßñ']+/g) || [], best = '', bestScore = 0;
-    var hint = { sv: /[åäö]/.test(text), no: /[åæø]/.test(text), da: /[æøå]/.test(text), de: /[äöüß]/.test(text), fi: /[äö]/.test(text), es: /[ñ¿¡]/.test(text), fr: /[éèêçàù]/.test(text) };
+    var words = String(text || '').toLowerCase().match(/[a-zà-ÿåäöæøßñ'\u0600-\u06FF]+/g) || [], best = '', bestScore = 0;
+    var hint = { sv: /[åäö]/.test(text), no: /[åæø]/.test(text), da: /[æøå]/.test(text), de: /[äöüß]/.test(text), fi: /[äö]/.test(text), es: /[ñ¿¡]/.test(text), fr: /[éèêçàù]/.test(text), ar: /[\u0600-\u06FF]/.test(text) };
+    if (hint.ar) return /[\u067E\u0686\u0698\u06AF\u06CC]/.test(text) ? 'fa' : 'ar';
+    if (/[\u3040-\u30FF]/.test(text)) return 'ja';
+    if (/[\uAC00-\uD7AF]/.test(text)) return 'ko';
+    if (/[\u4E00-\u9FFF]/.test(text)) return 'zh';
+    if (/[\u0E00-\u0E7F]/.test(text)) return 'th';
+    if (/[\u0900-\u097F]/.test(text)) return 'hi';
+    if (/[\u0370-\u03FF]/.test(text)) return 'el';
+    if (/[\u0400-\u04FF]/.test(text)) return /[іїєґ]/i.test(text) ? 'uk' : 'ru';
     Object.keys(STOPSET).forEach(function (k) {
       var score = 0;
       words.forEach(function (w) { if (STOPSET[k][w]) score += 2; });
@@ -512,7 +521,12 @@
   .tg{max-width:300px;margin:10px 0 0;font-size:14px;line-height:1.45;color:var(--muted);text-wrap:balance}
   .flags{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
   .fl{display:block;width:26px;height:26px;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.18)}
-  .fl.more{display:grid;place-items:center;background:#fff;box-shadow:inset 0 0 0 1.5px var(--d),0 1px 3px rgba(0,0,0,.12);font-size:13px;font-weight:600;line-height:1;color:var(--d)}
+  .fl.more,.fl.txt{display:grid;place-items:center;background:#fff;box-shadow:inset 0 0 0 1.5px var(--d),0 1px 3px rgba(0,0,0,.12);font-size:13px;font-weight:600;line-height:1;color:var(--d)}
+  .fl.txt{font-size:15px;background:#1E7A4A;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+  .flb{display:block;border-radius:50%;transition:transform .15s}
+  .flb:hover{transform:scale(1.12)}
+  .flb.on .fl{box-shadow:0 0 0 2.5px var(--a),0 1px 3px rgba(0,0,0,.18)}
+  .intro .langs{justify-content:center;margin-top:10px}
   .day{align-self:center;font-size:11.5px;line-height:1;color:var(--muted);padding:6px 0 2px;animation:fade .3s ease-out both}
 
   /* Starten nederst: öppningstexten och förslagen, närmast skrivfältet */
@@ -920,6 +934,7 @@
     }
     /* Överst i samtalet: den stora rubriken och en rad om företaget. De står kvar under samtalet och rullar bort när det blir längre. */
     /* Flaggor under rubriken (flags: ['se','gb','it','es','fr','de', '+']). Runda, ritade som SVG, så att de ser likadana ut överallt. */
+    var FLAGLANG = { se: 'sv', gb: 'en', us: 'en', it: 'it', es: 'es', fr: 'fr', de: 'de', no: 'no', dk: 'da', fi: 'fi', nl: 'nl', pl: 'pl', pt: 'pt', ar: 'ar' };
     var FLAGNAME = { se: 'Svenska', gb: 'English', us: 'English', it: 'Italiano', es: 'Español', fr: 'Français', de: 'Deutsch', no: 'Norsk', dk: 'Dansk', fi: 'Suomi', nl: 'Nederlands', pl: 'Polski', pt: 'Português' };
     function flagSvg(code, i) {
       code = String(code || '').toLowerCase();
@@ -935,6 +950,7 @@
         es: clip + '<g clip-path="url(#' + cp + ')"><rect width="26" height="26" fill="#C60B1E"/><rect y="7" width="26" height="12" fill="#F6C400"/></g>',
         nl: h('#AE1C28', '#fff', '#21468B'), pl: clip + '<g clip-path="url(#' + cp + ')"><rect width="26" height="13" fill="#fff"/><rect y="13" width="26" height="13" fill="#DC143C"/></g>',
         pt: clip + '<g clip-path="url(#' + cp + ')"><rect width="10" height="26" fill="#2E8B3B"/><rect x="10" width="16" height="26" fill="#C8102E"/></g>' }[code];
+      if (code === 'ar') return '<span class="fl txt" role="img" aria-label="العربية">ع</span>';
       if (!inner) return '<span class="fl more" aria-hidden="true">+</span>';
       return '<svg class="fl" viewBox="0 0 26 26" role="img" aria-label="' + esc(FLAGNAME[code] || code) + '">' + inner + '<circle cx="13" cy="13" r="12.5" fill="none" stroke="#fff" stroke-width="1.5"/></svg>';
     }
@@ -943,7 +959,37 @@
       var tg = n.querySelector('.tg'), tl = clean(C.tagline);
       tg.textContent = tl; tg.hidden = !tl;
       var fr = n.querySelector('.flags'), list = C.flags && C.flags.length ? C.flags : null;
-      if (fr) { fr.innerHTML = list ? list.map(flagSvg).join('') : ''; fr.hidden = !list; }
+      if (!fr) return;
+      fr.innerHTML = ''; fr.hidden = !list; if (!list) return;
+      // Med röst blir varje flagga en knapp: tryck på din flagga och prata. Plustecknet visar alla språk som rösten kan.
+      list.forEach(function (code, i) {
+        var lc = FLAGLANG[String(code).toLowerCase()], tag = lc && TAGS[lc];
+        if (!voiceOK || (!tag && code !== '+')) { fr.insertAdjacentHTML('beforeend', flagSvg(code, i)); return; }
+        var b = el('button', 'flb', flagSvg(code, i)); b.type = 'button';
+        if (tag) { b.setAttribute('aria-label', (LANGNAME[lc] || lc) + ' – tryck och prata'); b.title = LANGNAME[lc] || lc; b.dataset.lang = tag; b.onclick = function () { pickLang(tag, true); }; }
+        else { b.setAttribute('aria-label', 'Fler språk'); b.onclick = function () { moreLangs(fr); }; }
+        fr.appendChild(b);
+      });
+      markFlag();
+    }
+    // Markerar flaggan för det språk rösten lyssnar på just nu.
+    function markFlag() {
+      var cur = (vPick || '').slice(0, 2).toLowerCase();
+      [].forEach.call(root.querySelectorAll('.flb'), function (b) { b.classList.toggle('on', !!cur && (b.dataset.lang || '').slice(0, 2).toLowerCase() === cur); });
+    }
+    function pickLang(tag, talk) {
+      vPick = tag; store(id + ':vl', tag); paintLang(); markFlag();
+      if (talk) { if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); setTimeout(listen, 150); } else listen(); }
+    }
+    // Plustecknet: alla språk rösten kan, som knappar under flaggorna.
+    function moreLangs(fr) {
+      var old = fr.parentNode.querySelector('.langs'); if (old) { old.remove(); return; }
+      var box = el('div', 'chips langs');
+      voiceLangs().forEach(function (tag) {
+        var lc = tag.slice(0, 2).toLowerCase(), b = el('button'); b.type = 'button'; b.textContent = LANGNAME[lc] || tag;
+        b.onclick = function () { box.remove(); pickLang(tag, true); }; box.appendChild(b);
+      });
+      fr.parentNode.insertBefore(box, fr.nextSibling);
     }
     // När besökaren skriver första gången tonar rubriken ut på plats. Den ligger kvar osynlig och rullar bort med samtalet.
     function foldIntro() {
@@ -1657,8 +1703,8 @@
     var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     /* Vilket språk rösten lyssnar på. Webbläsarens taligenkänning kan bara ett språk åt gången, och webbläsarens eget språk
        är ofta fel (en svensk med engelsk dator). Ordning: gästens eget val, språket gästen senast skrev på, chattens språk. */
-    var LANGNAME = { sv: 'Svenska', en: 'English', de: 'Deutsch', it: 'Italiano', es: 'Español', fr: 'Français', no: 'Norsk', da: 'Dansk', fi: 'Suomi', nl: 'Nederlands' };
-    var TAGS = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT' };
+    var LANGNAME = { sv: 'Svenska', en: 'English', de: 'Deutsch', it: 'Italiano', es: 'Español', fr: 'Français', no: 'Norsk', da: 'Dansk', fi: 'Suomi', nl: 'Nederlands', ar: 'العربية', pl: 'Polski', pt: 'Português', nb: 'Norsk', zh: '中文', ja: '日本語', ko: '한국어', ru: 'Русский', uk: 'Українська', tr: 'Türkçe', hi: 'हिन्दी', el: 'Ελληνικά', fa: 'فارسی', th: 'ไทย' };
+    var TAGS = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT', ar: 'ar-SA', pl: 'pl-PL', pt: 'pt-PT', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU', uk: 'uk-UA', tr: 'tr-TR', hi: 'hi-IN', el: 'el-GR', fa: 'fa-IR', th: 'th-TH' };
     var vPick = null;
     function voiceLangs() { return (C.voiceLangs && C.voiceLangs.length ? C.voiceLangs : ['sv-SE', 'en-GB', 'de-DE', 'it-IT', 'es-ES', 'fr-FR']); }
     function voiceLang() {
@@ -1679,7 +1725,7 @@
     function nextLang() {
       var list = voiceLangs(), cur = voiceLang(), i = -1;
       list.forEach(function (t, k) { if (t.slice(0, 2).toLowerCase() === cur.slice(0, 2).toLowerCase()) i = k; });
-      vPick = list[(i + 1) % list.length]; store(id + ':vl', vPick); paintLang();
+      vPick = list[(i + 1) % list.length]; store(id + ':vl', vPick); paintLang(); markFlag();
       var name = LANGNAME[vPick.slice(0, 2).toLowerCase()] || vPick;
       if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); setTimeout(listen, 150); }
       else micNote('Rösten lyssnar nu på: ' + name);
@@ -1770,7 +1816,7 @@
     /* ---------- Uppläsning av svaren (webbläsarens egen röst) ----------
        Rösten väljs efter svarets språk. De naturligaste rösterna väljs först (till exempel Microsofts Natural-röster i Edge och Alva på Apple).
        voiceName väljer en bestämd röst, voiceRate talhastigheten. */
-    var LANGTAG = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT' };
+    var LANGTAG = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT', ar: 'ar-SA', pl: 'pl-PL', pt: 'pt-PT', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU', uk: 'uk-UA', tr: 'tr-TR', hi: 'hi-IN', el: 'el-GR', fa: 'fa-IR', th: 'th-TH' };
     function engine() { return C.voiceEngine === 'browser' ? 'browser' : 'voiceflow'; }
     function audioOK() { return !!(C.voice && C.voiceReply !== false && AC && engine() === 'voiceflow'); }
     function browserOK() { return !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance && (engine() === 'browser' || C.voiceFallback === 'browser')); }
