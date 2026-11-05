@@ -522,7 +522,7 @@
   .flags{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
   .fl{display:block;width:26px;height:26px;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.18)}
   .fl.more,.fl.txt{display:grid;place-items:center;background:#fff;box-shadow:inset 0 0 0 1.5px var(--d),0 1px 3px rgba(0,0,0,.12);font-size:13px;font-weight:600;line-height:1;color:var(--d)}
-  .fl.txt{font-size:15px;background:#1E7A4A;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+  .fl.txt{font-size:9px;font-weight:700;letter-spacing:0;direction:rtl;padding-top:1px;font-family:'Noto Naskh Arabic','Geeza Pro','Arial',sans-serif;background:var(--a);color:var(--on-a);box-shadow:0 1px 3px rgba(0,0,0,.18)}
   .flb{display:block;border-radius:50%;transition:transform .15s}
   .flb:hover{transform:scale(1.12)}
   .flb.on .fl{box-shadow:0 0 0 2.5px var(--a),0 1px 3px rgba(0,0,0,.18)}
@@ -950,7 +950,7 @@
         es: clip + '<g clip-path="url(#' + cp + ')"><rect width="26" height="26" fill="#C60B1E"/><rect y="7" width="26" height="12" fill="#F6C400"/></g>',
         nl: h('#AE1C28', '#fff', '#21468B'), pl: clip + '<g clip-path="url(#' + cp + ')"><rect width="26" height="13" fill="#fff"/><rect y="13" width="26" height="13" fill="#DC143C"/></g>',
         pt: clip + '<g clip-path="url(#' + cp + ')"><rect width="10" height="26" fill="#2E8B3B"/><rect x="10" width="16" height="26" fill="#C8102E"/></g>' }[code];
-      if (code === 'ar') return '<span class="fl txt" role="img" aria-label="العربية">ع</span>';
+      if (code === 'ar') return '<span class="fl txt" role="img" aria-label="العربية" lang="ar">عربي</span>';
       if (!inner) return '<span class="fl more" aria-hidden="true">+</span>';
       return '<svg class="fl" viewBox="0 0 26 26" role="img" aria-label="' + esc(FLAGNAME[code] || code) + '">' + inner + '<circle cx="13" cy="13" r="12.5" fill="none" stroke="#fff" stroke-width="1.5"/></svg>';
     }
