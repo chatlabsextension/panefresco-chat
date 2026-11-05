@@ -34,6 +34,7 @@ window.SMARTSVAR = {
 
   headline: 'Benvenuti!',
   tagline: 'Speaks all languages',
+  flags: ['se', 'gb', 'it', 'es', 'fr', 'de', '+'],
   opening: 'Ciao! Jag är ny här på Panefresco. Fråga mig om menyn, bord eller allergier, på vilket språk ni vill. Som ny kan jag ta fel ibland, säg bara till.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
   vfOpening: false,
