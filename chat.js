@@ -34,7 +34,8 @@ window.SMARTSVAR = {
 
   headline: 'Benvenuti!',
   tagline: 'Speaks all languages',
-  flags: ['se', 'gb', 'it', 'es', 'fr', 'de', '+'],
+  // Tryck på din flagga och prata. Plustecknet visar alla språk rösten kan.
+  flags: ['se', 'gb', 'it', 'es', 'fr', 'de', 'ar', '+'],
   opening: 'Ciao! Jag är ny här på Panefresco. Fråga mig om menyn, bord eller allergier, på vilket språk ni vill. Som ny kan jag ta fel ibland, säg bara till.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
   vfOpening: false,
@@ -57,9 +58,10 @@ window.SMARTSVAR = {
   launcherSub: 'Speaks all languages',
   // Inget röstkort i starten; Prata-knappen sitter i skrivfältet.
   talkCard: false,
-  voiceLangs: ['sv-SE', 'en-GB', 'it-IT', 'es-ES', 'fr-FR', 'de-DE'],
-  // Ingen språkknapp: rösten börjar på svenska och byter själv till gästens språk efter första frågan.
-  voiceLangButton: false,
+  voiceLangs: ['sv-SE', 'en-GB', 'it-IT', 'es-ES', 'fr-FR', 'de-DE', 'ar-SA', 'nb-NO', 'da-DK', 'fi-FI', 'nl-NL', 'pl-PL', 'pt-PT',
+    'zh-CN', 'ja-JP', 'ko-KR', 'ru-RU', 'uk-UA', 'tr-TR', 'hi-IN', 'el-GR', 'fa-IR', 'th-TH'],
+  // Språkknappen i skrivfältet: rösten måste veta vilket språk den ska lyssna på, så gästen kan byta där också.
+  voiceLangButton: true,
   // Popupen visar förslagen, inte en till Prata-knapp.
   teaserTalk: false,
   launcherMark: true,
