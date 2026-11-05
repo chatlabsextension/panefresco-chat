@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panefresco – test av ElevenLabs-agenten</title>
+<style>
+  body{margin:0;min-height:100vh;background:#FBF6EA;color:#2A2620;font-family:system-ui,sans-serif;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+  main{max-width:540px}
+  h1{color:#2747A0;font-size:26px;margin:0 0 12px}
+  p,li{line-height:1.6}
+  ol{padding-left:22px}
+  .note{font-size:14px;color:#6E6A62;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Testa Panefrescos AI på ElevenLabs</h1>
+  <p>Det här är ett test av en ny motor bakom chatten. Utseendet är ElevenLabs eget och inte det som ska vara på panefresco.se. Det vi vill veta är om den <b>förstår och svarar på rätt språk</b> när man pratar.</p>
+  <ol>
+    <li>Tryck på knappen nere till höger och tillåt mikrofonen.</li>
+    <li>Prata direkt på italienska, arabiska eller något annat språk. Välj inget språk först.</li>
+    <li>Skriv också en fråga i textfältet, på samma eller ett annat språk.</li>
+  </ol>
+  <p>Fråga som en gäst: öppettider, glutenfritt, bord för åtta på lördag, julfest.</p>
+  <p class="note">Agentens hälsning är skriven för telefonen ("personalen hinner inte svara"), så den låter lite fel här. Det är bara en text som byts innan något går live.</p>
+</main>
+<elevenlabs-convai agent-id="agent_3601m6gnvga1e3xrvvpemcfknpv4"></elevenlabs-convai>
+<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+</body>
+</html>
