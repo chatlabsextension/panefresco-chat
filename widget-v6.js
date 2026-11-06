@@ -1338,7 +1338,10 @@
         onDisconnect: function (d) { if (d && d.reason === 'error') console.warn('[Smartsvar] ElevenLabs:', d.message); elGone(); },
         onError: function (m) { console.warn('[Smartsvar] ElevenLabs:', m); },
         // Det gästen säger visas direkt, ord för ord, så man ser att den hör.
-        onIncomingEvent: function (ev) { if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript); },
+        onIncomingEvent: function (ev) {
+          if (ELC.debug && ev && ev.type !== 'audio' && ev.type !== 'ping' && ev.type !== 'vad_score') console.log('[Smartsvar] EL', ev.type, JSON.stringify(ev).slice(0, 300));
+          if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript);
+        },
         onVadScore: function (p) { if (elIsVoice) field.classList.toggle('hear', !!p && p.vadScore > 0.55); }
       };
       // Chatten visar sin egen öppning, så agentens hälsning hålls tillbaka i textläge och när samtalet redan är igång.
@@ -1407,7 +1410,7 @@
       pd.parts = true; pd.got = true; pd.acc = (pd.acc || '') + (p.type === 'delta' ? p.text : '');
       if (p.type === 'start') pd.rp.open();
       else if (p.type === 'delta') pd.rp.delta(p.text);
-      else if (p.type === 'stop') { elLastAcc = pd.acc; pd.rp.close(); elFinish(null); }
+      else if (p.type === 'stop') { elLastAcc = pd.acc; if (/\[[a-z][a-z \-]{1,24}\]/i.test(pd.acc)) pd.rp.redo(stripTags(pd.acc)); pd.rp.close(); elFinish(null); }
     }
     function elOnMessage(m) {
       if (!m) return;
@@ -1416,14 +1419,14 @@
         // Det gästen sa i röstsamtalet
         if (!elIsVoice || !text.trim()) return;
         if (elPending && elPending.mute) elPending = null;
-        if (elPending) elFinish(null);
+        var reuse = elPending && !elPending.got; if (elPending && !reuse) elFinish(null);
         hideTeaser(); flushTypers();
         [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
         if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
         w.classList.add('has'); lastUser = text;
         var me; if (elDraftEl && elDraftEl.isConnected) { me = elDraftEl; me.classList.remove('draft'); me.textContent = text; } else me = addMe(text);
         elDraftEl = null; log.push({ r: 'me', text: text }); save();
-        busy = true; sync(); glow(); ask({ type: 'el_wait' }, me);
+        busy = true; sync(); glow(); if (!reuse) ask({ type: 'el_wait' }, me); else if (elPending.rp.think) { msgs.appendChild(elPending.rp.think); if (stick) scroll.scrollTop = scroll.scrollHeight; }
         return;
       }
       // Hela svaret kommer också som ett meddelande efter bitarna: det är redan visat.
@@ -1432,11 +1435,12 @@
       var pd = elPending; if (!pd) return;
       if (pd.mute) { elPending = null; return; }
       if (pd.parts) { pd.rp.close(); elFinish(null); return; } // texten är redan framskriven i bitar
-      pd.got = true; pd.rp.text(text); elFinish(null);
+      pd.got = true; pd.rp.text(stripTags(text)); elFinish(null);
     }
     function elOnCorrection(c) {
       // Agenten avbröts: raden visar det som faktiskt sades.
       var t = c && (c.corrected_agent_response || ''); if (!t) return;
+      t = stripTags(t);
       var last = msgs.querySelector('.bot:last-of-type .tx'); if (last && !elPending) last.innerHTML = md(clean(t));
       else if (elPending && elPending.rp) elPending.rp.redo(t);
     }
@@ -1768,7 +1772,7 @@
       ask(req || { type: 'text', payload: text }, me);
     }
     function ask(action, me) {
-      var think = addBot(thinkHtml()), rp = makeReply(think);
+      var think = addBot(thinkHtml()), rp = makeReply(think); rp.think = think;
       stick = true;
       if (me) setTimeout(function () { follow(me); }, 30);
       var byVoice = turnVoice, ep0 = epoch; turnVoice = false;
@@ -1779,7 +1783,7 @@
         if (!alive) return;
         var cta = actionFor(textOfBlocks(rp.blocks)); if (cta) rp.block(cta);
         var done = rp.finish(), vis = visible(rp.blocks);
-        if (!vis.length) throw new Error('Tomt svar från agenten');
+        if (!vis.length) { if (elOn() && elIsVoice) { think.remove(); return; } throw new Error('Tomt svar från agenten'); }
         log.push({ r: 'bot', blocks: vis }); save();
         var words = textOfBlocks(vis);
         if (tA) { tA.text = words; tA.ended = true; checkTurn(tA); }
@@ -1977,6 +1981,7 @@
       var rl = C.talkRotate || C.launcherRotate; if (rl && rl.length) rotate(b.querySelector('.t2'), rl); else b.querySelector('.t2').textContent = T.talkHint;
       b.onclick = listen; return b;
     }
+    function stripTags(t) { return String(t || '').replace(/\s*\[[a-z][a-z \-]{1,24}\]\s*/gi, ' ').replace(/\s{2,}/g, ' ').replace(/^\s+/, ''); }
     function talkEl() {
       var b = el('button', 'talk'); b.type = 'button';
       b.innerHTML = '<span class="tk">' + svg(UI.mic, 16) + '</span><span></span>';
