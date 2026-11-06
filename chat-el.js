@@ -18,7 +18,9 @@ window.SMARTSVAR = {
   side: 'left',
   // Motorn: Panefrescos ElevenLabs-agent, samma som i telefonen. Text går som textsamtal, Prata som röstsamtal.
   elevenlabs: {
-    agentId: 'agent_3601m6gnvga1e3xrvvpemcfknpv4'
+    agentId: 'agent_3601m6gnvga1e3xrvvpemcfknpv4',
+    // Under testet: loggar alla händelser från ElevenLabs i konsolen (F12). Ta bort när chatten går live.
+    debug: true
     // Gästen pratar först när Prata trycks. Vill ni att agenten hälsar: voiceGreeting: 'Benvenuti! Vad kan jag hjälpa er med?'
   },
   // Gamla Voiceflow-projektet, används bara om raden ovan tas bort.
