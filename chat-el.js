@@ -18,9 +18,8 @@ window.SMARTSVAR = {
   side: 'left',
   // Motorn: Panefrescos ElevenLabs-agent, samma som i telefonen. Text går som textsamtal, Prata som röstsamtal.
   elevenlabs: {
-    agentId: 'agent_3601m6gnvga1e3xrvvpemcfknpv4',
-    // Det agenten säger när gästen trycker Prata innan något är skrivet. Telefonens hälsning passar inte på webben.
-    voiceGreeting: 'Benvenuti! Vad kan jag hjälpa er med?'
+    agentId: 'agent_3601m6gnvga1e3xrvvpemcfknpv4'
+    // Gästen pratar först när Prata trycks. Vill ni att agenten hälsar: voiceGreeting: 'Benvenuti! Vad kan jag hjälpa er med?'
   },
   // Gamla Voiceflow-projektet, används bara om raden ovan tas bort.
   voiceflow: { projectID: '6ac5f9e6c5932bcb42d6fa30', versionID: 'production' },
