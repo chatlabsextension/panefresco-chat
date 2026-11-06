@@ -1,4 +1,4 @@
-/* Panefresco – inställningar för Smartsvar-chatten (kräver widget.js v5.4 eller senare).
+/* Panefresco – inställningar för Smartsvar-chatten (kräver widget.js v6.0 eller senare).
    Looken kommer från Panefrescos meny: koboltblått, krämvitt menypapper, citronglöd,
    Cinzel i rubrikerna och citat i kursiv Cormorant Garamond i orange.
    Medan chatten tänker gräddas en napolitansk pizza i ugnen (thinking: 'oven'). */
@@ -16,6 +16,12 @@ window.SMARTSVAR = {
   name: 'Panefresco',
   // Chatten ligger nere till vänster på panefresco.se.
   side: 'left',
+  // Motorn: Panefrescos ElevenLabs-agent, samma som i telefonen. Text går som textsamtal, Prata som röstsamtal.
+  elevenlabs: {
+    agentId: 'agent_3601m6gnvga1e3xrvvpemcfknpv4'
+    // Gästen pratar först när Prata trycks. Vill ni att agenten hälsar: voiceGreeting: 'Benvenuti! Vad kan jag hjälpa er med?'
+  },
+  // Gamla Voiceflow-projektet, används bara om raden ovan tas bort.
   voiceflow: { projectID: '6ac5f9e6c5932bcb42d6fa30', versionID: 'production' },
   language: 'sv',
   phone: '076-593 83 31',
@@ -34,7 +40,7 @@ window.SMARTSVAR = {
 
   headline: 'Benvenuti!',
   tagline: 'Speaks all languages',
-  // Tryck på din flagga och prata. Plustecknet visar alla språk rösten kan.
+  // Flaggorna visar att chatten pratar alla språk. Rösten känner av språket själv.
   flags: ['se', 'gb', 'it', 'es', 'fr', 'de', 'ar', '+'],
   opening: 'Ciao! Jag är ny här på Panefresco. Fråga mig om menyn, bord eller allergier, på vilket språk ni vill. Som ny kan jag ta fel ibland, säg bara till.',
   // Öppningen ovan visas alltid. Voiceflows egen öppning (som AI-agenten skriver ny varje gång) visas aldrig.
