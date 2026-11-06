@@ -635,6 +635,8 @@
   .field.rec.hear .mic{animation:none;box-shadow:0 0 0 4px rgba(200,55,45,.28),0 0 0 9px rgba(200,55,45,.12);transition:box-shadow .12s}
   .me.draft{opacity:.55;font-style:italic}
   .me.draft:empty{display:none}
+  .me.draft.dots{font-style:normal;letter-spacing:2px;animation:dots 1.2s ease-in-out infinite}
+  @keyframes dots{0%,100%{opacity:.35}50%{opacity:.8}}
   .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
   .mic .wv{display:none;align-items:center;gap:2.5px;height:20px}
   .mic .wv i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:wave .9s ease-in-out infinite}
@@ -1335,6 +1337,7 @@
         agentId: ELC.agentId, connectionType: voice ? (ELC.connectionType || 'webrtc') : 'websocket', textOnly: !voice,
         dynamicVariables: { previous_chat: hist || 'inget', channel: voice ? 'webb röst' : 'webb chatt', page_url: location.href.slice(0, 200) },
         onMessage: elOnMessage, onAgentChatResponsePart: elOnPart, onAgentResponseCorrection: elOnCorrection,
+        onDebug: function (ev) { if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript); },
         onModeChange: function (p) { elSpeaking = p.mode === 'speaking'; if (elIsVoice) setSpeaking(elSpeaking); },
         onStatusChange: function (p) { if (p.status === 'disconnected') elGone(); },
         onDisconnect: function (d) { if (d && d.reason === 'error') console.warn('[Smartsvar] ElevenLabs:', d.message); elGone(); },
@@ -1344,7 +1347,7 @@
           if (ELC.debug && ev && ev.type !== 'audio' && ev.type !== 'ping' && ev.type !== 'vad_score') console.log('[Smartsvar] EL', ev.type, JSON.stringify(ev).slice(0, 300));
           if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript);
         },
-        onVadScore: function (p) { if (elIsVoice) field.classList.toggle('hear', !!p && p.vadScore > 0.55); }
+        onVadScore: function (p) { if (!elIsVoice) return; var on = !!p && p.vadScore > 0.55; field.classList.toggle('hear', on); if (on && !(elDraftEl && elDraftEl.isConnected)) elDraft('\u2026', true); }
       };
       // Chatten visar sin egen öppning, så agentens hälsning hålls tillbaka i textläge och när samtalet redan är igång.
       // Agenten väntar på gästen. Vill man att den hälsar när Prata trycks: voiceGreeting: 'Benvenuti! ...' i chat.js.
@@ -1375,14 +1378,15 @@
     }
     function elEnd() { var c = elConv; elConv = null; elIsVoice = false; if (c) { try { c.endSession(); } catch (e) {} } if (elPending) elFinish(new Error('Samtalet avslutades')); }
     var elDraftEl = null;
-    function elDraft(text) {
+    function elDraft(text, dots) {
       text = String(text || '').trim(); if (!elIsVoice || !text) return;
+      if (dots && elDraftEl && elDraftEl.isConnected) return;
       if (!elDraftEl || !elDraftEl.isConnected) {
         hideTeaser(); [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
         if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); w.classList.add('has'); }
         elDraftEl = addMe(''); elDraftEl.classList.add('draft'); stick = true;
       }
-      elDraftEl.textContent = text; if (stick) scroll.scrollTop = scroll.scrollHeight;
+      elDraftEl.textContent = text; elDraftEl.classList.toggle('dots', !!dots); if (stick) scroll.scrollTop = scroll.scrollHeight;
     }
     function elGone() {
       field.classList.remove('hear'); if (elDraftEl) { elDraftEl.remove(); elDraftEl = null; }
