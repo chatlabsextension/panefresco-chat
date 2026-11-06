@@ -700,6 +700,14 @@
   .launch .lw i:nth-child(2){animation-delay:-.7s}.launch .lw i:nth-child(3){animation-delay:-.4s}.launch .lw i:nth-child(4){animation-delay:-.15s}
   .w.talk1.open .launch .lm{display:none}
   .w.talk1[data-m=mobile] .launch{width:auto;padding:0 20px 0 10px;border-radius:29px}
+  /* Krysset på mobilen: krymper den breda knappen till en rund ikon under besöket. */
+  .lx{position:fixed;z-index:2147483001;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;
+    background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.25);font-size:17px;line-height:1;padding:0 0 1px}
+  .w[data-m=desktop] .lx,.w.open .lx,.w.mini .lx{display:none}
+  .w.mini[data-m=mobile] .launch{width:60px!important;padding:0!important;border-radius:50%!important}
+  .w.mini[data-m=mobile] .launch .lt{display:none!important}
+  .w.mini[data-m=mobile] .launch .lm{margin:0!important}
+  .w.mini .teaser{display:none}
   .w.talk1[data-m=mobile] .launch .lt{display:flex}
   .w.talk1[data-m=mobile] .launch .lm{margin-left:0}
   @keyframes ring{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.5);opacity:0}}
@@ -838,7 +846,7 @@
       '</section>' +
       (inline ? '' : '<div class="teaser" role="button" tabindex="0" hidden><button class="tx-x" type="button" aria-label="' + esc(T.close) + '">' + svg(UI.x, 14) + '</button>' +
         '<div class="tn"><span class="av"></span><span class="tname"></span></div><p></p><div class="chips"></div></div>' +
-        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lm" aria-hidden="true">' + svg(UI.mic, 20) + '</span><span class="lt"><span class="lr"><span class="lt1"></span><span class="lw" aria-hidden="true"><i></i><i></i><i></i><i></i></span></span><span class="lt2"></span></span><span class="lc">' + svg(UI.down, 24) + '</span></button>') +
+        '<button class="launch" type="button" aria-expanded="false"><span class="li">' + CHAT_ICON + '</span><span class="av"></span><span class="lm" aria-hidden="true">' + svg(UI.mic, 20) + '</span><span class="lt"><span class="lr"><span class="lt1"></span><span class="lw" aria-hidden="true"><i></i><i></i><i></i><i></i></span></span><span class="lt2"></span></span><span class="lc">' + svg(UI.down, 24) + '</span></button><button class="lx" type="button" aria-label="Gör knappen mindre" hidden>&times;</button>') +
       '</div>';
 
     var q = function (s) { return root.querySelector(s); };
@@ -869,6 +877,8 @@
       vPick = store(id + ':vl') || null;
       voiceOK = !!(C.voice && (SR || elOn())); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
       w.classList.toggle('talk1', talk1()); w.classList.toggle('left', C.side === 'left');
+      w.classList.toggle('mini', store(id + ':mini') === '1');
+      var lxb = q('.lx'); if (lxb) lxb.hidden = !(talk1() && C.launcherMini !== false);
       var tcard = q('.talkc'); if (tcard) { if (wantCard()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
       var foot = q('.foot'), note = clean(C.footnote), by = C.poweredBy === '' ? '' : (C.poweredBy || 'Smartsvar');
@@ -2184,6 +2194,10 @@
     if (TTS && TTS.getVoices) { TTS.getVoices(); if ('onvoiceschanged' in TTS) TTS.addEventListener('voiceschanged', function () {}); }
     if (launch) {
       launch.onclick = function () { if (isOpen) close(); else if (talk1() && C.launcherTalk) listen(); else open(); };
+      var lx = q('.lx'); if (lx) { lx.onclick = function () { w.classList.add('mini'); store(id + ':mini', '1'); hideTeaser(); }; }
+      // Krysset ligger i knappens övre högra hörn
+      function placeLx() { if (!lx || lx.hidden) return; var r = launch.getBoundingClientRect(); lx.style.left = Math.round(r.right - 14) + 'px'; lx.style.top = Math.round(r.top - 10) + 'px'; }
+      placeLx(); window.addEventListener('resize', placeLx); setTimeout(placeLx, 400); setInterval(function () { if (alive && !w.classList.contains('open')) placeLx(); }, 1500);
       q('.scrim').onclick = close;
       teaser.onclick = function () { hideTeaser(); open(); };
       teaser.onkeydown = function (e) { if (e.key === 'Enter') { hideTeaser(); open(); } };
