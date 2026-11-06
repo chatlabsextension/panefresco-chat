@@ -40,7 +40,11 @@
     "Prata med oss"), popupen får en stor Prata-knapp, och starten i chatten ett stort röstkort. launcherRotate (och talkRotate)
     låter en rad växla mellan flera texter, till exempel "I speak every language" på olika språk. badge sätter en liten etikett
     bredvid namnet. launcherTalk: true startar mikrofonen direkt när chattknappen trycks. teaserTalk: false behåller förslagen i popupen. voiceLangButton: false döljer språkknappen; rösten byter då bara språk automatiskt. side: 'left' lägger chatten nere till vänster. talkCard: false tar bort röstkortet i starten. flags: ['se','gb','it','es','fr','de','ar','+'] visar runda flaggor under rubriken; med röst väljer ett tryck på flaggan röstens språk och startar mikrofonen.
-    Saknar webbläsaren röst blir allt som förut. */
+    Saknar webbläsaren röst blir allt som förut.
+    v6.0: elevenlabs: { agentId } byter motor till en ElevenLabs-agent (samma agent som i telefonen). Text går som ett textsamtal,
+    Prata startar ett röstsamtal via ElevenLabs SDK: gästen pratar på vilket språk som helst, agenten svarar med sin egen röst,
+    och allt fungerar även på iPhone där webbläsarens röst är spärrad. Utseendet, pizzaugnen och knapparna är desamma.
+    Utan elevenlabs i inställningarna används Voiceflow precis som förut. */
 (function () {
   'use strict';
   if (window.SmartsvarChat && window.SmartsvarChat.__v) return;
@@ -628,6 +632,9 @@
   .field.spk .vl{display:none!important}
   .field.vx .mic:not([hidden])~.send{display:none}
   .field.rec .mic{background:var(--rec,#C8372D);color:#fff;animation:ping 1.3s ease-out infinite}
+  .field.rec.hear .mic{animation:none;box-shadow:0 0 0 4px rgba(200,55,45,.28),0 0 0 9px rgba(200,55,45,.12);transition:box-shadow .12s}
+  .me.draft{opacity:.55;font-style:italic}
+  .me.draft:empty{display:none}
   .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
   .mic .wv{display:none;align-items:center;gap:2.5px;height:20px}
   .mic .wv i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:wave .9s ease-in-out infinite}
@@ -858,7 +865,7 @@
       q('.sub').textContent = clean(C.status);
       q('.bdg').textContent = clean(C.badge);
       vPick = store(id + ':vl') || null;
-      voiceOK = !!(C.voice && SR); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
+      voiceOK = !!(C.voice && (SR || elOn())); micB.hidden = !voiceOK; micB.setAttribute('aria-label', T.talk); paintMic(); sync(); paintLang();
       w.classList.toggle('talk1', talk1()); w.classList.toggle('left', C.side === 'left');
       var tcard = q('.talkc'); if (tcard) { if (wantCard()) tcard.parentNode.replaceChild(talkCard(), tcard); else tcard.remove(); }
       speakOn = store(id + ':spk') === '1'; q('.snd').hidden = !canSpeak(); paintSnd();
@@ -964,6 +971,7 @@
       // Med röst blir varje flagga en knapp: tryck på din flagga och prata. Plustecknet visar alla språk som rösten kan.
       list.forEach(function (code, i) {
         var lc = FLAGLANG[String(code).toLowerCase()], tag = lc && TAGS[lc];
+        if (elOn() && lc) tag = lc;
         if (!voiceOK || (!tag && code !== '+')) { fr.insertAdjacentHTML('beforeend', flagSvg(code, i)); return; }
         var b = el('button', 'flb', flagSvg(code, i)); b.type = 'button';
         if (tag) { b.setAttribute('aria-label', (LANGNAME[lc] || lc) + ' – tryck och prata'); b.title = LANGNAME[lc] || lc; b.dataset.lang = tag; b.onclick = function () { pickLang(tag, true); }; }
@@ -978,6 +986,7 @@
       [].forEach.call(root.querySelectorAll('.flb'), function (b) { b.classList.toggle('on', !!cur && (b.dataset.lang || '').slice(0, 2).toLowerCase() === cur); });
     }
     function pickLang(tag, talk) {
+      if (elOn()) { elPickLang = tag.slice(0, 2).toLowerCase(); vPick = tag; markFlag(); if (talk) { if (elIsVoice) elStopVoice(); setTimeout(elListen, 120); } return; }
       vPick = tag; store(id + ':vl', tag); paintLang(); markFlag();
       if (talk) { if (listening && rec) { try { rec.abort(); } catch (e) {} setListening(false); setTimeout(listen, 150); } else listen(); }
     }
@@ -985,7 +994,7 @@
     function moreLangs(fr) {
       var old = fr.parentNode.querySelector('.langs'); if (old) { old.remove(); return; }
       var box = el('div', 'chips langs');
-      voiceLangs().forEach(function (tag) {
+      (elOn() ? (ELC.languages || EL_LANGS) : voiceLangs()).forEach(function (tag) {
         var lc = tag.slice(0, 2).toLowerCase(), b = el('button'); b.type = 'button'; b.textContent = LANGNAME[lc] || tag;
         b.onclick = function () { box.remove(); pickLang(tag, true); }; box.appendChild(b);
       });
@@ -1295,6 +1304,180 @@
     }
     function save() { if (C.persist !== false) store(id, JSON.stringify(log.slice(-40))); }
 
+    /* ---------- ElevenLabs (elevenlabs: { agentId }) ----------
+       Samma agent som i telefonen. Text skickas som ett textsamtal (ingen ljudkostnad). Prata startar ett röstsamtal där
+       SDK:t sköter mikrofon och uppspelning; gästen pratar på vilket språk som helst och agenten känner av det själv.
+       Svaren kommer i bitar (text_response_part) och skrivs fram på samma rad som "Tänker", precis som med Voiceflow. */
+    var ELC = C.elevenlabs || null, elSdkP = null, elConv = null, elIsVoice = false, elPending = null, elStarting = null, elSpeaking = false, elMuteFirst = false, elLastAcc = '';
+    function elOn() { return !!(ELC && ELC.agentId); }
+    function elSdk() {
+      if (window.ElevenLabsClient && window.ElevenLabsClient.Conversation) return Promise.resolve(window.ElevenLabsClient);
+      if (!elSdkP) elSdkP = new Promise(function (ok, fail) {
+        var sc = document.createElement('script'); sc.async = true;
+        sc.src = ELC.sdk || 'https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.35.0/dist/lib.iife.js';
+        sc.onload = function () { window.ElevenLabsClient && window.ElevenLabsClient.Conversation ? ok(window.ElevenLabsClient) : fail(new Error('ElevenLabs SDK laddades inte')); };
+        sc.onerror = function () { elSdkP = null; fail(new Error('ElevenLabs SDK gick inte att hämta')); };
+        document.head.appendChild(sc);
+      });
+      return elSdkP;
+    }
+    // Det senaste ur samtalet, så att ett nytt röstsamtal vet vad som redan sagts.
+    function elHistory() {
+      var out = [];
+      log.slice(-12).forEach(function (m) {
+        if (m.r === 'me') out.push('Gäst: ' + m.text);
+        else if (m.r === 'bot' && !m.o) { var t = clean(textOfBlocks(m.blocks || [])); if (t) out.push('Du: ' + t.slice(0, 300)); }
+      });
+      return out.join('\n').slice(-1800);
+    }
+    function elOptions(voice) {
+      var hist = elHistory(), o = {
+        agentId: ELC.agentId, connectionType: voice ? (ELC.connectionType || 'webrtc') : 'websocket', textOnly: !voice,
+        dynamicVariables: { previous_chat: hist || 'inget', channel: voice ? 'webb röst' : 'webb chatt', page_url: location.href.slice(0, 200) },
+        onMessage: elOnMessage, onAgentChatResponsePart: elOnPart, onAgentResponseCorrection: elOnCorrection,
+        onModeChange: function (p) { elSpeaking = p.mode === 'speaking'; if (elIsVoice) setSpeaking(elSpeaking); },
+        onStatusChange: function (p) { if (p.status === 'disconnected') elGone(); },
+        onDisconnect: function (d) { if (d && d.reason === 'error') console.warn('[Smartsvar] ElevenLabs:', d.message); elGone(); },
+        onError: function (m) { console.warn('[Smartsvar] ElevenLabs:', m); },
+        // Det gästen säger visas direkt, ord för ord, så man ser att den hör.
+        onIncomingEvent: function (ev) {
+          if (ELC.debug && ev && ev.type !== 'audio' && ev.type !== 'ping' && ev.type !== 'vad_score') console.log('[Smartsvar] EL', ev.type, JSON.stringify(ev).slice(0, 300));
+          if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript);
+        },
+        onVadScore: function (p) { if (elIsVoice) field.classList.toggle('hear', !!p && p.vadScore > 0.55); }
+      };
+      // Chatten visar sin egen öppning, så agentens hälsning hålls tillbaka i textläge och när samtalet redan är igång.
+      // Agenten väntar på gästen. Vill man att den hälsar när Prata trycks: voiceGreeting: 'Benvenuti! ...' i chat.js.
+      if (voice && !hist && clean(ELC.voiceGreeting)) { o.overrides = { agent: { firstMessage: clean(ELC.voiceGreeting) } }; elMuteFirst = false; }
+      else { o.overrides = { agent: { firstMessage: '' } }; elMuteFirst = true; }
+      // Språket gästens telefon eller webbläsare är inställd på: rösten lyssnar på det från första ordet, och agenten byter
+      // själv om gästen ändå pratar något annat. Har gästen redan skrivit på ett språk i chatten gäller det.
+      var gl = elGuestLang(); if (gl) o.overrides.agent.language = gl;
+      if (ELC.userId) o.userId = ELC.userId;
+      return o;
+    }
+    var elPickLang = '';
+    var EL_LANGS = ['sv', 'en', 'it', 'es', 'fr', 'de', 'no', 'da', 'fi', 'nl', 'pl', 'pt', 'zh', 'ja', 'ko', 'ru', 'uk', 'tr', 'hi', 'el', 'ar'];
+    function elGuestLang() {
+      var langs = ELC.languages || EL_LANGS, c = elPickLang;
+      if (!c && lastUser) c = guessLang(lastUser, '');
+      if (!c) { var nl = String((navigator.languages && navigator.languages[0]) || navigator.language || '').slice(0, 2).toLowerCase(); c = nl === 'nb' || nl === 'nn' ? 'no' : nl; }
+      return langs.indexOf(c) >= 0 ? c : '';
+    }
+    function elEnsure(voice) {
+      if (elConv && elIsVoice === voice) return Promise.resolve(elConv);
+      if (elStarting) return elStarting.then(function () { return elEnsure(voice); });
+      var old = elConv; elConv = null;
+      if (old) { try { old.endSession(); } catch (e) {} }
+      elStarting = elSdk().then(function (sdk) { return sdk.Conversation.startSession(elOptions(voice)); })
+        .then(function (c) { elConv = c; elIsVoice = voice; elStarting = null; return c; }, function (e) { elStarting = null; throw e; });
+      return elStarting;
+    }
+    function elEnd() { var c = elConv; elConv = null; elIsVoice = false; if (c) { try { c.endSession(); } catch (e) {} } if (elPending) elFinish(new Error('Samtalet avslutades')); }
+    var elDraftEl = null;
+    function elDraft(text) {
+      text = String(text || '').trim(); if (!elIsVoice || !text) return;
+      if (!elDraftEl || !elDraftEl.isConnected) {
+        hideTeaser(); [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
+        if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); w.classList.add('has'); }
+        elDraftEl = addMe(''); elDraftEl.classList.add('draft'); stick = true;
+      }
+      elDraftEl.textContent = text; if (stick) scroll.scrollTop = scroll.scrollHeight;
+    }
+    function elGone() {
+      field.classList.remove('hear'); if (elDraftEl) { elDraftEl.remove(); elDraftEl = null; }
+      var wasVoice = elIsVoice; elConv = null; elIsVoice = false;
+      if (elPending) elFinish(null);
+      if (wasVoice) { setSpeaking(false); setListening(false); }
+    }
+    // Ett svar på väg: rp är raden i chatten, ok/fail avslutar turen i ask().
+    function elTurn(rp) {
+      return new Promise(function (ok, fail) {
+        if (elPending) elFinish(null);
+        var pd = { rp: rp, ok: ok, fail: fail, parts: false, got: false, timer: 0 };
+        pd.timer = setTimeout(function () { if (elPending === pd) elFinish(new Error('Inget svar från agenten')); }, num(ELC.timeout, 60) * 1000);
+        elPending = pd;
+      });
+    }
+    function elFinish(err) {
+      var pd = elPending; if (!pd) return; elPending = null; clearTimeout(pd.timer);
+      if (err && !pd.got) pd.fail(err); else pd.ok();
+    }
+    function elSend(text, rp) {
+      return elEnsure(elIsVoice && !!elConv).then(function (c) { var t = elTurn(rp); c.sendUserMessage(text); return t; });
+    }
+    function elWait(rp) { return elTurn(rp); }
+    // Ett svar agenten börjar själv (i röstsamtalet) får en egen rad, som om gästen just frågat.
+    function elSpontaneous() {
+      if (elPending || !alive) return;
+      if (elMuteFirst) { elMuteFirst = false; return; } // hälsningen som ändå kom, trots tyst öppning: visas inte
+      if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); w.classList.add('has'); }
+      [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
+      busy = true; sync(); ask({ type: 'el_wait' }, null);
+    }
+    function elOnPart(p) {
+      if (!p || typeof p.text !== 'string') return;
+      if (!elPending) { if (elMuteFirst && p.type === 'start') { elMuteFirst = false; elPending = { mute: true, type: 'mute' }; return; } if (!elPending) elSpontaneous(); }
+      var pd = elPending; if (!pd) return;
+      if (pd.mute) { if (p.type === 'stop') elPending = null; return; }
+      pd.parts = true; pd.got = true; pd.acc = (pd.acc || '') + (p.type === 'delta' ? p.text : '');
+      if (p.type === 'start') pd.rp.open();
+      else if (p.type === 'delta') pd.rp.delta(p.text);
+      else if (p.type === 'stop') { elLastAcc = pd.acc; if (/\[[a-z][a-z \-]{1,24}\]/i.test(pd.acc)) pd.rp.redo(stripTags(pd.acc)); pd.rp.close(); elFinish(null); }
+    }
+    function elOnMessage(m) {
+      if (!m) return;
+      var role = m.role || (m.source === 'ai' ? 'agent' : 'user'), text = String(m.message || '');
+      if (role === 'user') {
+        // Det gästen sa i röstsamtalet
+        if (!elIsVoice || !text.trim()) return;
+        if (elPending && elPending.mute) elPending = null;
+        var reuse = elPending && !elPending.got; if (elPending && !reuse) elFinish(null);
+        hideTeaser(); flushTypers();
+        [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
+        if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
+        w.classList.add('has'); lastUser = text;
+        var me; if (elDraftEl && elDraftEl.isConnected) { me = elDraftEl; me.classList.remove('draft'); me.textContent = text; } else me = addMe(text);
+        elDraftEl = null; log.push({ r: 'me', text: text }); save();
+        busy = true; sync(); glow(); if (!reuse) ask({ type: 'el_wait' }, me); else if (elPending.rp.think) { msgs.appendChild(elPending.rp.think); if (stick) scroll.scrollTop = scroll.scrollHeight; }
+        return;
+      }
+      // Hela svaret kommer också som ett meddelande efter bitarna: det är redan visat.
+      if (!elPending && elLastAcc && clean(text) === clean(elLastAcc)) { elLastAcc = ''; return; }
+      if (!elPending) { if (elMuteFirst) { elMuteFirst = false; return; } elSpontaneous(); }
+      var pd = elPending; if (!pd) return;
+      if (pd.mute) { elPending = null; return; }
+      if (pd.parts) { pd.rp.close(); elFinish(null); return; } // texten är redan framskriven i bitar
+      pd.got = true; pd.rp.text(stripTags(text)); elFinish(null);
+    }
+    function elOnCorrection(c) {
+      // Agenten avbröts: raden visar det som faktiskt sades.
+      var t = c && (c.corrected_agent_response || ''); if (!t) return;
+      t = stripTags(t);
+      var last = msgs.querySelector('.bot:last-of-type .tx'); if (last && !elPending) last.innerHTML = md(clean(t));
+      else if (elPending && elPending.rp) elPending.rp.redo(t);
+    }
+    /* Prata: ett röstsamtal via ElevenLabs. Ett tryck startar, ett tryck till avslutar. */
+    function elListen() {
+      if (elIsVoice && elConv) { elStopVoice(); return; }
+      if (busy && !elIsVoice) { return; }
+      open(); hideTeaser(); setListening(true); micNote('');
+      var vn = q('.vnote'); if (vn) vn.hidden = true;
+      elEnsure(true).then(function () { if (!alive) return; setListening(true); paintMic(); })
+        .catch(function (e) {
+          console.warn('[Smartsvar] Rösten:', e); setListening(false);
+          var msg = String(e && e.message || e || '');
+          micNote(/denied|permission|NotAllowed/i.test(msg) ? (IOS ? T.micBlockedIOS : T.micBlocked) : T.micOther);
+        });
+    }
+    function elStopVoice() {
+      if (!elIsVoice && !elStarting) return;
+      var c = elConv; elConv = null; elIsVoice = false; field.classList.remove('hear'); if (elDraftEl) { elDraftEl.remove(); elDraftEl = null; }
+      if (c) { try { c.endSession(); } catch (e) {} }
+      if (elPending && !elPending.got) elFinish(null);
+      setSpeaking(false); setListening(false);
+    }
+
     /* ---------- Voiceflow ---------- */
     var V = C.voiceflow, RUNTIME = String(C.runtimeUrl || 'https://general-runtime.voiceflow.com').replace(/[/]+$/, '');
     function vfUser() {
@@ -1540,6 +1723,7 @@
           ok();
         }, 900 + Math.random() * 700);
       });
+      if (elOn()) return action.type === 'el_wait' ? elWait(rp) : elSend(action.payload, rp);
       if (!V.projectID) return Promise.reject(new Error('projectID saknas i konfigurationen'));
       return launched().then(function () { return exchange(action, rp, !!(turnAudio && turnAudio.tok === sayTok)); });
     }
@@ -1572,7 +1756,7 @@
       if (!w.classList.contains('has') && voiceOK && C.voiceHint && !talk1()) h.appendChild(talkEl());
       log.push({ r: 'bot', o: 1, blocks: [{ t: 'text', text: known || opening() }] }); save();
       // Voiceflow-flödets egen öppning ersätter den inställda så fort den kommer, så länge besökaren inte har skrivit något.
-      if (!C.demo && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
+      if (!C.demo && !elOn() && V.projectID && !store(id + ':on')) launched().then(function (blocks) {
         if (!alive || own) return; // egen fast öppning: Voiceflows öppning visas aldrig
         var vis = visible(blocks), txt = clean(textOfBlocks(vis));
         lstore(id + ':welcome', txt || null); // minns öppningen till nästa besök, tomt om flödet inte har någon
@@ -1601,9 +1785,9 @@
       ask(req || { type: 'text', payload: text }, me);
     }
     function ask(action, me) {
-      var think = addBot(thinkHtml()), rp = makeReply(think);
+      var think = addBot(thinkHtml()), rp = makeReply(think); rp.think = think;
       stick = true;
-      setTimeout(function () { follow(me); }, 30);
+      if (me) setTimeout(function () { follow(me); }, 30);
       var byVoice = turnVoice, ep0 = epoch; turnVoice = false;
       var wantVoice = canSpeak() && (byVoice || speakOn);
       var again = byVoice && voiceOK && C.voiceLoop !== false ? function () { if (alive && isOpen && ep0 === epoch && !busy && !document.hidden) listen(); } : null;
@@ -1612,7 +1796,7 @@
         if (!alive) return;
         var cta = actionFor(textOfBlocks(rp.blocks)); if (cta) rp.block(cta);
         var done = rp.finish(), vis = visible(rp.blocks);
-        if (!vis.length) throw new Error('Tomt svar från Voiceflow');
+        if (!vis.length) { if (elOn() && elIsVoice) { think.remove(); return; } throw new Error('Tomt svar från agenten'); }
         log.push({ r: 'bot', blocks: vis }); save();
         var words = textOfBlocks(vis);
         if (tA) { tA.text = words; tA.ended = true; checkTurn(tA); }
@@ -1630,7 +1814,7 @@
       hush();
       dropTypers(); epoch++; stick = true;
       log = []; store(id, null); store(id + ':u', null); store(id + ':on', null);
-      launchP = null; waitText = ''; lastUser = ''; inputLocked = false; ta.disabled = false;
+      launchP = null; waitText = ''; lastUser = ''; inputLocked = false; ta.disabled = false; elEnd();
       msgs.innerHTML = ''; w.classList.remove('has'); scroll.scrollTop = 0; glow();
       greeted = false; greet(); sync();
     }
@@ -1718,7 +1902,7 @@
     function paintLang() {
       var b = q('.vl'); if (!b) return;
       var tag = voiceLang(), code = tag.slice(0, 2).toLowerCase(), name = LANGNAME[code] || tag;
-      b.hidden = !voiceOK || !!C.voiceLang || C.voiceLangButton === false || voiceLangs().length < 2;
+      b.hidden = !voiceOK || elOn() || !!C.voiceLang || C.voiceLangButton === false || voiceLangs().length < 2;
       b.textContent = code.toUpperCase();
       b.setAttribute('aria-label', 'Språk för rösten: ' + name); b.title = 'Språk för rösten: ' + name;
     }
@@ -1732,6 +1916,7 @@
     }
     function listen() {
       if (!voiceOK) return;
+      if (elOn()) { elListen(); return; }
       if (speaking) { stopSpeak(); return; }
       if (listening) { try { rec.stop(); } catch (e) { setListening(false); } return; }
       if (busy || inputLocked || document.hidden) return;
@@ -1777,6 +1962,7 @@
     var micT = 0;
     function hush() {
       clearTimeout(micT);
+      if (elOn()) elStopVoice();
       if (rec) { var r = rec; rec = null; try { r.onend = null; r.onresult = null; r.onerror = null; r.abort(); } catch (e) {} }
       if (listening) setListening(false);
       stopSpeak();
@@ -1808,6 +1994,7 @@
       var rl = C.talkRotate || C.launcherRotate; if (rl && rl.length) rotate(b.querySelector('.t2'), rl); else b.querySelector('.t2').textContent = T.talkHint;
       b.onclick = listen; return b;
     }
+    function stripTags(t) { return String(t || '').replace(/\s*\[[a-z][a-z \-]{1,24}\]\s*/gi, ' ').replace(/\s{2,}/g, ' ').replace(/^\s+/, ''); }
     function talkEl() {
       var b = el('button', 'talk'); b.type = 'button';
       b.innerHTML = '<span class="tk">' + svg(UI.mic, 16) + '</span><span></span>';
@@ -1818,8 +2005,8 @@
        voiceName väljer en bestämd röst, voiceRate talhastigheten. */
     var LANGTAG = { sv: 'sv-SE', en: 'en-GB', no: 'nb-NO', da: 'da-DK', de: 'de-DE', fi: 'fi-FI', es: 'es-ES', fr: 'fr-FR', nl: 'nl-NL', it: 'it-IT', ar: 'ar-SA', pl: 'pl-PL', pt: 'pt-PT', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU', uk: 'uk-UA', tr: 'tr-TR', hi: 'hi-IN', el: 'el-GR', fa: 'fa-IR', th: 'th-TH' };
     function engine() { return C.voiceEngine === 'browser' ? 'browser' : 'voiceflow'; }
-    function audioOK() { return !!(C.voice && C.voiceReply !== false && AC && engine() === 'voiceflow'); }
-    function browserOK() { return !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance && (engine() === 'browser' || C.voiceFallback === 'browser')); }
+    function audioOK() { return !elOn() && !!(C.voice && C.voiceReply !== false && AC && engine() === 'voiceflow'); }
+    function browserOK() { return !elOn() && !!(C.voice && C.voiceReply !== false && TTS && window.SpeechSynthesisUtterance && (engine() === 'browser' || C.voiceFallback === 'browser')); }
     function canSpeak() { return audioOK() || browserOK(); }
     // Ljud får bara starta efter ett tryck (särskilt på iPhone). Ljudmotorn startas därför vid varje tryck på Prata, högtalaren eller Skicka.
     function unlock() {
@@ -2075,7 +2262,7 @@
   /* ---------- Publikt API ---------- */
   var current = null;
   var API = window.SmartsvarChat = {
-    __v: '5.4.0', base: BASE, mount: mount,
+    __v: '6.0.0', base: BASE, mount: mount,
     init: function (config) { API.destroy(); current = mount(config || {}); return API; },
     destroy: function () { if (current) { current.destroy(); current = null; } return API; },
     update: function (config) { if (current) current.update(config); return API; },
