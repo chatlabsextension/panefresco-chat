@@ -632,6 +632,9 @@
   .field.spk .vl{display:none!important}
   .field.vx .mic:not([hidden])~.send{display:none}
   .field.rec .mic{background:var(--rec,#C8372D);color:#fff;animation:ping 1.3s ease-out infinite}
+  .field.rec.hear .mic{animation:none;box-shadow:0 0 0 4px rgba(200,55,45,.28),0 0 0 9px rgba(200,55,45,.12);transition:box-shadow .12s}
+  .me.draft{opacity:.55;font-style:italic}
+  .me.draft:empty{display:none}
   .field.rec .mic svg{animation:breathe 1.3s ease-in-out infinite}
   .mic .wv{display:none;align-items:center;gap:2.5px;height:20px}
   .mic .wv i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:wave .9s ease-in-out infinite}
@@ -1333,7 +1336,10 @@
         onModeChange: function (p) { elSpeaking = p.mode === 'speaking'; if (elIsVoice) setSpeaking(elSpeaking); },
         onStatusChange: function (p) { if (p.status === 'disconnected') elGone(); },
         onDisconnect: function (d) { if (d && d.reason === 'error') console.warn('[Smartsvar] ElevenLabs:', d.message); elGone(); },
-        onError: function (m) { console.warn('[Smartsvar] ElevenLabs:', m); if (elPending) elFinish(new Error(String(m))); }
+        onError: function (m) { console.warn('[Smartsvar] ElevenLabs:', m); },
+        // Det gästen säger visas direkt, ord för ord, så man ser att den hör.
+        onIncomingEvent: function (ev) { if (ev && ev.type === 'tentative_user_transcript' && ev.tentative_user_transcription_event) elDraft(ev.tentative_user_transcription_event.user_transcript); },
+        onVadScore: function (p) { if (elIsVoice) field.classList.toggle('hear', !!p && p.vadScore > 0.55); }
       };
       // Chatten visar sin egen öppning, så agentens hälsning hålls tillbaka i textläge och när samtalet redan är igång.
       // Agenten väntar på gästen. Vill man att den hälsar när Prata trycks: voiceGreeting: 'Benvenuti! ...' i chat.js.
@@ -1352,7 +1358,18 @@
       return elStarting;
     }
     function elEnd() { var c = elConv; elConv = null; elIsVoice = false; if (c) { try { c.endSession(); } catch (e) {} } if (elPending) elFinish(new Error('Samtalet avslutades')); }
+    var elDraftEl = null;
+    function elDraft(text) {
+      text = String(text || '').trim(); if (!elIsVoice || !text) return;
+      if (!elDraftEl || !elDraftEl.isConnected) {
+        hideTeaser(); [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
+        if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); w.classList.add('has'); }
+        elDraftEl = addMe(''); elDraftEl.classList.add('draft'); stick = true;
+      }
+      elDraftEl.textContent = text; if (stick) scroll.scrollTop = scroll.scrollHeight;
+    }
     function elGone() {
+      field.classList.remove('hear'); if (elDraftEl) { elDraftEl.remove(); elDraftEl = null; }
       var wasVoice = elIsVoice; elConv = null; elIsVoice = false;
       if (elPending) elFinish(null);
       if (wasVoice) { setSpeaking(false); setListening(false); }
@@ -1404,7 +1421,8 @@
         [].forEach.call(msgs.querySelectorAll('.chips,.list,.talk,.talkc'), function (n) { n.remove(); });
         if (!w.classList.contains('has')) { foldIntro(); var dt = stamp(); addDay(dt); log.push({ r: 'day', text: dt }); }
         w.classList.add('has'); lastUser = text;
-        var me = addMe(text); log.push({ r: 'me', text: text }); save();
+        var me; if (elDraftEl && elDraftEl.isConnected) { me = elDraftEl; me.classList.remove('draft'); me.textContent = text; } else me = addMe(text);
+        elDraftEl = null; log.push({ r: 'me', text: text }); save();
         busy = true; sync(); glow(); ask({ type: 'el_wait' }, me);
         return;
       }
@@ -1437,7 +1455,7 @@
     }
     function elStopVoice() {
       if (!elIsVoice && !elStarting) return;
-      var c = elConv; elConv = null; elIsVoice = false;
+      var c = elConv; elConv = null; elIsVoice = false; field.classList.remove('hear'); if (elDraftEl) { elDraftEl.remove(); elDraftEl = null; }
       if (c) { try { c.endSession(); } catch (e) {} }
       if (elPending && !elPending.got) elFinish(null);
       setSpeaking(false); setListening(false);
