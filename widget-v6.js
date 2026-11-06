@@ -1348,8 +1348,18 @@
       // Agenten väntar på gästen. Vill man att den hälsar när Prata trycks: voiceGreeting: 'Benvenuti! ...' i chat.js.
       if (voice && !hist && clean(ELC.voiceGreeting)) { o.overrides = { agent: { firstMessage: clean(ELC.voiceGreeting) } }; elMuteFirst = false; }
       else { o.overrides = { agent: { firstMessage: '' } }; elMuteFirst = true; }
+      // Språket gästens telefon eller webbläsare är inställd på: rösten lyssnar på det från första ordet, och agenten byter
+      // själv om gästen ändå pratar något annat. Har gästen redan skrivit på ett språk i chatten gäller det.
+      var gl = elGuestLang(); if (gl) o.overrides.agent.language = gl;
       if (ELC.userId) o.userId = ELC.userId;
       return o;
+    }
+    var EL_LANGS = ['sv', 'en', 'it', 'es', 'fr', 'de', 'no', 'da', 'fi', 'nl', 'pl', 'pt', 'zh', 'ja', 'ko', 'ru', 'uk', 'tr', 'hi', 'el', 'ar'];
+    function elGuestLang() {
+      var langs = ELC.languages || EL_LANGS, c = '';
+      if (lastUser) c = guessLang(lastUser, '');
+      if (!c) { var nl = String((navigator.languages && navigator.languages[0]) || navigator.language || '').slice(0, 2).toLowerCase(); c = nl === 'nb' || nl === 'nn' ? 'no' : nl; }
+      return langs.indexOf(c) >= 0 ? c : '';
     }
     function elEnsure(voice) {
       if (elConv && elIsVoice === voice) return Promise.resolve(elConv);
